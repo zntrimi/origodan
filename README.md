@@ -1,5 +1,33 @@
 # Sumire (スミレ) — The Privacy-First Japanese Keyboard
 
+## Mirror GODAN fork
+
+This working tree is a personal Android/foldable fork of Sumire. Its Japanese
+layout is replaced with GODAN input while retaining Sumire's offline Mozc-based
+dictionary conversion, learning, candidate UI, clipboard history, user
+dictionary, snippets, and optional Zenz support.
+
+- Cover displays use one five-column GODAN panel.
+- Displays at least 600dp wide use two identical three-column GODAN letter
+  blocks, one utility column on each outer edge, and a 20%-wide dead zone at
+  the hinge. Controls are not duplicated beside the hinge.
+- Consonant flicks expose voiced/alternate rows (for example K→G and H→P/B/F).
+- The microphone shortcut prefers Android's on-device speech recognizer on
+  Android 12+, then falls back to the system recognizer when the selected
+  language is unavailable. Microphone permission is requested on first use;
+  repeated taps cannot accidentally cancel an active recognition session.
+- The base application ID is `dev.imaizentarou.mirrorgodan` so it can coexist
+  with upstream Sumire. The Lite APK adds the `.lite` suffix.
+
+Build the installable debug APK with:
+
+```shell
+./gradlew :app:assembleLiteStandardDebug
+```
+
+The output is
+`app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk`.
+
 <p align="center">
   <img src="images/demo.gif" width="250" alt="Sumire typing demo"/>
 </p>
@@ -254,9 +282,9 @@ Sumireは、**プライバシーを絶対に妥協しない**
 
 | カテゴリ | 設定 | 初期値 |
 |:--|:--|:--|
-| zenz の設定 | AI による予測変換を有効にする | OFF |
+| zenz の設定 | AI による予測変換を有効にする | ON |
 | zenz の設定 | タイピング修正を有効にする | OFF |
-| zenz の設定 | zenz で変換候補を並び替える | OFF |
+| zenz の設定 | zenz で変換候補を並び替える | ON |
 | zenz の設定 | モデルの読み込み元 | 画面/操作 |
 | zenz の設定 | zenz で使用するプロフィールの設定 | 空 |
 | zenz の設定 | 右側の文脈を利用する | OFF |
@@ -485,3 +513,4 @@ This project stands on the shoulders of giants. Our thanks go to:
 ### 📄 License
 
 **MIT License** © 2025 Kazuma Naka — See the [`LICENSE`](LICENSE) file for details.
+# origodan
