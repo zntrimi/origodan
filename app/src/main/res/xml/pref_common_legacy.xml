@@ -338,7 +338,7 @@
         <SwitchPreferenceCompat
             android:key="shortcut_toolbar_visibility_preference"
             android:title="@string/shortcut_toolbar_title"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:summary="@string/shortcut_toolbar_summary" />
 
         <SwitchPreferenceCompat
@@ -414,7 +414,7 @@
             app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="zero_query_suggestion_preference"
             android:summaryOff="@string/zero_query_suggestion_summary_off"
             android:summaryOn="@string/zero_query_suggestion_summary_on"

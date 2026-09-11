@@ -94,6 +94,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/keyboard_height"
+        android:minHeight="48dp"
         android:background="@color/keyboard_bg">
 
         <ProgressBar
@@ -128,6 +129,42 @@
             android:scaleType="center"
             android:src="@drawable/outline_arrow_drop_down_24"
             android:tint="@color/keyboard_icon_color"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/compact_clipboard_history_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="2dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/compact_clipboard_history_content_description"
+            android:elevation="0dp"
+            android:padding="10dp"
+            android:src="@drawable/history_24dp"
+            android:stateListAnimator="@null"
+            android:tint="@color/keyboard_icon_color"
+            android:translationZ="0dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/compact_voice_button"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/compact_voice_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="6dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="音声入力"
+            android:elevation="0dp"
+            android:padding="10dp"
+            android:src="@drawable/settings_voice_24px"
+            android:stateListAnimator="@null"
+            android:tint="@color/keyboard_icon_color"
+            android:translationZ="0dp"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -183,6 +220,27 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/split_clipboard_history"
+        android:layout_width="1dp"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom|center_horizontal"
+        android:clipToPadding="true"
+        android:overScrollMode="never"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/shortcut_panel_recyclerview"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:background="@color/keyboard_bg"
+        android:clipToPadding="false"
+        android:padding="8dp"
         android:visibility="gone" />
 
     <com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView

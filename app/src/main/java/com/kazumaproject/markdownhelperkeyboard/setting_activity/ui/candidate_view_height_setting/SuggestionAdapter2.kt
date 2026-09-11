@@ -201,7 +201,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
-    private var candidateTextSize: Float = 14f
+    private var candidateTextSize: Float = 17f
     private var candidateTextColor: Int? = null
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false

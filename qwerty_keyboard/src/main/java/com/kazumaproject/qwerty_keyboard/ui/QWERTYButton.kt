@@ -19,6 +19,16 @@ class QWERTYButton @JvmOverloads constructor(
 ) : AppCompatButton(context, attrs, defStyleAttr) {
 
     private val gestureDetector = GestureDetector(context, GestureListener())
+    private val guideHorizontalInsetPx = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        7f,
+        resources.displayMetrics
+    )
+    private val guideVerticalInsetPx = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        4f,
+        resources.displayMetrics
+    )
 
     var guideTextSizeSp: Float = DEFAULT_GUIDE_TEXT_SIZE_SP
         set(value) {
@@ -63,6 +73,12 @@ class QWERTYButton @JvmOverloads constructor(
 
     init {
         isAllCaps = false
+        // AppCompat's default button style installs a StateListAnimator which raises the key
+        // again even when android:elevation is 0dp in the layout. QWERTY keys are intentionally
+        // flat; pressed feedback is provided by the background selector instead.
+        stateListAnimator = null
+        elevation = 0f
+        translationZ = 0f
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -81,17 +97,19 @@ class QWERTYButton @JvmOverloads constructor(
 
         // topRightCharがnullでなければ文字を描画する
         topRightChar?.toString()?.let { charText ->
-            // 描画位置を計算 (ボタンの右上、少し内側)
-            val x = (width - paddingRight).toFloat()
-            val y = paddingTop.toFloat() + topRightPaint.textSize
+            // Background replacement can reset AppCompat's padding to zero. Keep guide labels
+            // inside a fixed safe area so punctuation is never clipped at the key edge.
+            val x = width - maxOf(paddingRight.toFloat(), guideHorizontalInsetPx)
+            val y = maxOf(paddingTop.toFloat(), guideVerticalInsetPx) + topRightPaint.textSize
 
             // Canvasに文字を描画
             canvas.drawText(charText, x, y, topRightPaint)
         }
 
         bottomRightChar?.toString()?.let { charText ->
-            val x = (width - paddingRight).toFloat()
-            val y = height - paddingBottom.toFloat() - topRightPaint.fontMetrics.descent
+            val x = width - maxOf(paddingRight.toFloat(), guideHorizontalInsetPx)
+            val y = height - maxOf(paddingBottom.toFloat(), guideVerticalInsetPx) -
+                topRightPaint.fontMetrics.descent
             canvas.drawText(charText, x, y, topRightPaint)
         }
     }

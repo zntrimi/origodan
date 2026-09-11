@@ -403,6 +403,32 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         while (i < normalizedText.length) {
             val currentChar = normalizedText[i]
 
+            // For NN followed by a vowel/Y, the first N is ん and the second starts
+            // the next syllable (KONNI -> こんに). At the end of input, NN is one ん.
+            if (
+                currentChar == 'n' &&
+                i + 1 < normalizedText.length &&
+                normalizedText[i + 1] == 'n'
+            ) {
+                result.append("ん")
+                val followingChar = normalizedText.getOrNull(i + 2)
+                i += if (followingChar != null && followingChar in "aiueoy") 1 else 2
+                continue
+            }
+
+            // A single N becomes ん as soon as another consonant follows it.
+            // Keep N before a vowel/Y available for な/に/ぬ/ね/の and にゃ-style
+            // mappings. Example: ZENTAROU -> ぜんたろう, not ぜntarou.
+            if (
+                currentChar == 'n' &&
+                i + 1 < normalizedText.length &&
+                normalizedText[i + 1] !in "aiueoyn"
+            ) {
+                result.append("ん")
+                i++
+                continue
+            }
+
             // Rule 2: Special handling for double consonants (Sokuon)
             // Check if the current character is a consonant and is followed by the same one.
             if (i + 1 < normalizedText.length &&

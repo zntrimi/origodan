@@ -474,7 +474,7 @@ class SettingHomeFragment : Fragment() {
         appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
         val currentColumn = appPreference.getCandidateColumn(isLandscape)
         val activeHeight = appPreference.getCandidateVisibleHeightDp(isLandscape, currentColumn)
-        val candidateTextSize = appPreference.candidate_letter_size ?: 14.0f
+        val candidateTextSize = appPreference.candidate_letter_size ?: 17.0f
         return getString(
             R.string.setting_home_candidate_height_summary,
             appPreference.getCandidateVisibleHeightDp(isLandscape, "1"),

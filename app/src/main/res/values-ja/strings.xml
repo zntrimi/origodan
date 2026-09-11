@@ -158,6 +158,7 @@
     <string name="user_dictionary_about_title">ユーザー辞書とは</string>
     <string name="user_template_explanation"><![CDATA[メールアドレスやコードスニペット、Markdownの表などを短い「読み」で登録できます。キーボードで登録した「読み」を正確に入力すると、変換候補に登録した全文が表示されます。\n\n例:\n- 読み: myemail\n 定型文: my.long.email.address@example.com\n- 読み: html5\n 定型文: <!DOCTYPE html><html>…</html>]]></string>
     <string name="clipboard_history_title">クリップボードの履歴</string>
+    <string name="compact_clipboard_history_content_description">クリップボード履歴をすべて表示</string>
     <string name="dialog_image_description">dialog_image_description</string>
     <string name="keyboard_selection_summary">キーボードの追加、削除ができます</string>
     <string name="keyboard_selection_preference_title">キーボードの選択</string>
@@ -467,6 +468,9 @@
     <string name="gemma_media_import_failed">メディアを読み込めませんでした。</string>
     <string name="gemma_media_action_failed">Gemmaアクションに失敗しました。</string>
     <string name="gemma_audio_permission_denied">音声入力にはマイクの許可が必要です。</string>
+    <string name="voice_input_permission_denied">音声入力にはマイクの許可が必要です。</string>
+    <string name="voice_input_unavailable">この端末では音声入力を利用できません。</string>
+    <string name="voice_input_no_speech">音声を認識できませんでした。</string>
     <string name="gemma_audio_unavailable">この端末では録音を開始できません。</string>
     <string name="gemma_audio_recording">録音中…</string>
     <string name="gemma_audio_recording_seconds">録音中… %1$d秒 / 30秒</string>
@@ -772,6 +776,7 @@
     <string name="flick_down_left">左下</string>
     <string name="flick_down_right">右下</string>
     <string name="emoji">絵文字</string>
+    <string name="emoji_search_prompt">🔍 絵文字を検索</string>
     <string name="emoticon">顔文字</string>
     <string name="symbol">記号</string>
     <string name="clipboard_history">クリップボードの履歴</string>
@@ -1800,4 +1805,5 @@
     <string name="keyboard_type_qwerty">英語（QWERTY）</string>
     <string name="keyboard_type_romaji">日本語 - ローマ字</string>
     <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
+    <string name="clipboard_image_preview_label">画像</string>
 </resources>

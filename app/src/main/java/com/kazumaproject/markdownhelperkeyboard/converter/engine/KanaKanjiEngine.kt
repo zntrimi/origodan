@@ -5280,6 +5280,33 @@ class KanaKanjiEngine {
         }
     }
 
+    /** Searches the bundled Japanese emoji-reading dictionary without running kanji conversion. */
+    fun searchEmojiCandidates(input: String, limit: Int = 96): List<Candidate> {
+        val normalized = input.trim()
+        if (normalized.isEmpty()) return emptyList()
+        val predictionConfig = PredictionConfig()
+        val readings = deferredPredictionEmojiSymbols(
+            input = normalized,
+            yomiTrie = emojiYomiTrie,
+            succinctBitVector = emojiSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+            enabled = true,
+        )
+        return deferredFromDictionarySymbols(
+            input = normalized,
+            commonPrefixListString = readings,
+            yomiTrie = emojiYomiTrie,
+            tokenArray = emojiTokenArray,
+            tangoTrie = emojiTangoTrie,
+            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
+            type = 11,
+            predictionConfig = predictionConfig,
+        ).distinctBy { it.string }.sortedBy { it.score }.take(limit)
+    }
+
     private fun commonPrefixMozcUT(
         input: String,
         yomiTrie: LOUDSWithTermId?,

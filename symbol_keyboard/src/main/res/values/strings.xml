@@ -16,4 +16,5 @@
     <string name="emoji_category_symbols">Symbols</string>
     <string name="emoji_category_flags">Flags</string>
     <string name="emoji_category_unknown">Other</string>
+    <string name="emoji_search">Search emoji</string>
 </resources>

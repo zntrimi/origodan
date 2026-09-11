@@ -4,7 +4,7 @@
 
     <PreferenceCategory android:title="@string/zenz_preference_category_title">
         <SwitchPreferenceCompat
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="enable_ai_conversion_zenz_preference"
             android:title="@string/enable_ai_preference_title"
             app:summary="@string/enable_ai_preference_summary" />
@@ -20,7 +20,7 @@
             android:dependency="enable_ai_conversion_zenz_preference"
             android:key="enable_zenz_rerank_preference"
             android:title="@string/enable_zenz_rerank_preference_title"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:summary="@string/enable_zenz_rerank_preference_summary" />
 
         <Preference

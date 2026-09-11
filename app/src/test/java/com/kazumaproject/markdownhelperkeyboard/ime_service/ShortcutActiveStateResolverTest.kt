@@ -13,6 +13,26 @@ import org.mockito.kotlin.mock
 
 class ShortcutActiveStateResolverTest {
     @Test
+    fun voiceInputShortcutIsActiveOnlyWhileListening() {
+        val inactive = resolveShortcutActiveTypes(
+            keyboardLayoutEditActive = false,
+            keyboardFloatingActive = false,
+            inputBehavior = ResolvedInputBehavior.COMPOSING_TEXT,
+            liveConversionEnabled = false,
+        )
+        val active = resolveShortcutActiveTypes(
+            keyboardLayoutEditActive = false,
+            keyboardFloatingActive = false,
+            inputBehavior = ResolvedInputBehavior.COMPOSING_TEXT,
+            liveConversionEnabled = false,
+            voiceInputActive = true,
+        )
+
+        assertFalse(ShortcutType.VOICE_INPUT in inactive)
+        assertTrue(ShortcutType.VOICE_INPUT in active)
+    }
+
+    @Test
     fun handwritingShortcutIsActiveWhileSurfaceIsShown() {
         val active = resolveShortcutActiveTypes(
             keyboardLayoutEditActive = false,

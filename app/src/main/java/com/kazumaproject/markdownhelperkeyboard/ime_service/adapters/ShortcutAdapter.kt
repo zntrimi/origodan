@@ -1,14 +1,17 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.animation.ValueAnimator
 import android.graphics.PorterDuff
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.R as CoreR
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 
@@ -42,6 +45,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
      */
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imageView: ImageView = view.findViewById(R.id.item_image)
+        private var voicePulseAnimator: ValueAnimator? = null
 
         init {
             itemView.setOnClickListener {
@@ -50,6 +54,42 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
                     onItemClicked?.invoke(getItem(position))
                 }
             }
+        }
+
+        fun setVoiceInputActive(active: Boolean) {
+            voicePulseAnimator?.cancel()
+            voicePulseAnimator = null
+            imageView.alpha = 1f
+            imageView.scaleX = 1f
+            imageView.scaleY = 1f
+            if (!active) return
+
+            imageView.setColorFilter(
+                ContextCompat.getColor(imageView.context, CoreR.color.red),
+                PorterDuff.Mode.SRC_IN,
+            )
+            voicePulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 560L
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                addUpdateListener { animator ->
+                    val progress = animator.animatedValue as Float
+                    imageView.alpha = 1f - (0.42f * progress)
+                    val scale = 1f + (0.16f * progress)
+                    imageView.scaleX = scale
+                    imageView.scaleY = scale
+                }
+                start()
+            }
+        }
+
+        fun recycle() {
+            voicePulseAnimator?.cancel()
+            voicePulseAnimator = null
+            imageView.clearAnimation()
+            imageView.alpha = 1f
+            imageView.scaleX = 1f
+            imageView.scaleY = 1f
         }
     }
 
@@ -70,6 +110,14 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         } ?: run {
             holder.imageView.clearColorFilter()
         }
+        holder.setVoiceInputActive(
+            active = item == ShortcutType.VOICE_INPUT && item in activeShortcutTypes,
+        )
+    }
+
+    override fun onViewRecycled(holder: ViewHolder) {
+        holder.recycle()
+        super.onViewRecycled(holder)
     }
 
     fun setShortcutToolbarSize(

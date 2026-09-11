@@ -34,6 +34,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionary
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnUpdateResult
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnedNextWordRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -49,6 +50,9 @@ class DictionaryLearnFragment : Fragment() {
 
     @Inject
     lateinit var learnRepository: LearnRepository
+
+    @Inject
+    lateinit var learnedNextWordRepository: LearnedNextWordRepository
 
     private lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
     private var allLearnItems: List<Pair<String, List<LearnEntity>>> = emptyList()
@@ -474,6 +478,7 @@ class DictionaryLearnFragment : Fragment() {
 
     private suspend fun deleteAll() {
         learnRepository.deleteAll()
+        learnedNextWordRepository.deleteAll()
     }
 
     override fun onDestroyView() {

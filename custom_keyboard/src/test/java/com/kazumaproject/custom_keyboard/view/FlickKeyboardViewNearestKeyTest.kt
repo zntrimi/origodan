@@ -44,6 +44,17 @@ class FlickKeyboardViewNearestKeyTest {
         override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) { releases += action }
     }
 
+    @Test fun keySurfacesDoNotUsePlatformElevationShadows() {
+        val view = keyboard()
+
+        repeat(view.childCount) { index ->
+            val key = view.getChildAt(index)
+            assertEquals(null, key.stateListAnimator)
+            assertEquals(0f, key.elevation, 0f)
+            assertEquals(0f, key.translationZ, 0f)
+        }
+    }
+
     @Test fun gapsAndIntersections_selectNearestCenter_atNormalAndSmallSizes() {
         for (size in listOf(100, 0)) {
             val view = keyboard()
@@ -194,6 +205,30 @@ class FlickKeyboardViewNearestKeyTest {
         assertEquals(listOf(KeyAction.Text("a")), actions)
         actions.clear()
         view.setKeyboard(layout)
+        tap(view, 450f, 100f)
+        assertTrue(actions.isEmpty())
+    }
+
+    @Test fun spacerAwareNearestPolicy_fillsKeyMarginsButKeepsSpacerUntouchable() {
+        val view = keyboard()
+        val data = keys().keys.first()
+        val layout = KeyboardLayout(
+            keys = listOf(data),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1,
+            items = listOf(
+                KeyItem("a", data, GridPlacement(0, 0)),
+                SpacerItem("hinge", GridPlacement(0, 2)),
+            ),
+        )
+        view.setKeyboard(layout, KeyHitTestMode.NEAREST_KEY_EXCLUDING_SPACERS)
+        layout(view)
+
+        tap(view, 1f, 1f)
+        assertEquals(listOf(KeyAction.Text("a")), actions)
+
+        actions.clear()
         tap(view, 450f, 100f)
         assertTrue(actions.isEmpty())
     }

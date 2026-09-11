@@ -1,19 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="symbol_clipboard_section_pinned">ピン留め</string>
-    <string name="symbol_clipboard_section_unpinned">ピン留めなし</string>
-    <string name="symbol_clipboard_action_paste">貼り付け</string>
-    <string name="symbol_clipboard_action_pin">ピン留め</string>
-    <string name="symbol_clipboard_action_unpin">ピン留めを解除</string>
-    <string name="symbol_clipboard_action_delete">削除</string>
-    <string name="emoji_category_smileys_emotion">顔文字、気分</string>
-    <string name="emoji_category_people_body">人々</string>
-    <string name="emoji_category_animals_nature">動物、自然</string>
-    <string name="emoji_category_food_drink">食品、飲料</string>
-    <string name="emoji_category_travel_places">移動、場所</string>
-    <string name="emoji_category_activities">活動、イベント</string>
-    <string name="emoji_category_objects">物</string>
-    <string name="emoji_category_symbols">記号</string>
-    <string name="emoji_category_flags">旗</string>
-    <string name="emoji_category_unknown">その他</string>
+    <string name="emoji_search">絵文字を検索</string>
 </resources>

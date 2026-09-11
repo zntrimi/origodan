@@ -158,6 +158,7 @@
     <string name="user_dictionary_about_title">What is the User Dictionary?</string>
     <string name="user_template_explanation"><![CDATA[You can register email addresses, code snippets, Markdown tables, and more with short "readings". When you type the registered "reading" exactly on the keyboard, the full registered text will appear as a conversion candidate.\n\nExamples:\n- Reading: myemail\n  Template: my.long.email.address@example.com\n- Reading: html5\n  Template: <!DOCTYPE html><html>…</html>]]></string>
     <string name="clipboard_history_title">Clipboard History</string>
+    <string name="compact_clipboard_history_content_description">Show all clipboard history</string>
     <string name="dialog_image_description">dialog_image_description</string>
     <string name="keyboard_selection_summary">You can add or remove keyboards</string>
     <string name="keyboard_selection_preference_title">Keyboard Selection</string>
@@ -471,6 +472,9 @@
     <string name="gemma_media_import_failed">Could not read the media.</string>
     <string name="gemma_media_action_failed">The Gemma action failed.</string>
     <string name="gemma_audio_permission_denied">Microphone permission is required for audio input.</string>
+    <string name="voice_input_permission_denied">Microphone permission is required for voice input.</string>
+    <string name="voice_input_unavailable">Voice input is unavailable on this device.</string>
+    <string name="voice_input_no_speech">No speech was recognized.</string>
     <string name="gemma_audio_unavailable">Recording is unavailable on this device.</string>
     <string name="gemma_audio_recording">Recording…</string>
     <string name="gemma_audio_recording_seconds">Recording… %1$d s / 30 s</string>
@@ -814,6 +818,7 @@
     <string name="flick_down_left">Lower Left</string>
     <string name="flick_down_right">Lower Right</string>
     <string name="emoji">Emoji</string>
+    <string name="emoji_search_prompt">🔍 Search emoji</string>
     <string name="emoticon">Emoticon</string>
     <string name="symbol">Symbol</string>
     <string name="clipboard_history">Clipboard History</string>
@@ -1802,4 +1807,5 @@
     <string name="keyboard_type_qwerty">English (QWERTY)</string>
     <string name="keyboard_type_romaji">Japanese – Romaji</string>
     <string name="keyboard_type_custom">Custom – User defined</string>
+    <string name="clipboard_image_preview_label">Image</string>
 </resources>

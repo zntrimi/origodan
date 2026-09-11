@@ -12,7 +12,6 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.SystemClock
 import android.text.Spannable
@@ -75,6 +74,7 @@ import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
 import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointerPoint
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
+import com.kazumaproject.qwerty_keyboard.glide.QwertyTapSample
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyProximity
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import kotlinx.coroutines.CoroutineScope
@@ -138,6 +138,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
+    private var lastReleasedTapSample: QwertyTapSample? = null
     private var qwertyKeyTouchCancelListener: QwertyKeyTouchCancelListener? = null
     private var qwertyKeyMap: QWERTYKeyMap
 
@@ -301,6 +302,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         val inflater = LayoutInflater.from(context)
         binding = QwertyLayoutBinding.inflate(inflater, this)
+
+        // AppCompatButton/AppCompatImageButton may inherit an elevation animator from the app
+        // theme. Disable it for every QWERTY surface, including function keys, so their idle and
+        // pressed states cannot acquire a platform drop shadow.
+        for (index in 0 until childCount) {
+            getChildAt(index).apply {
+                stateListAnimator = null
+                elevation = 0f
+                translationZ = 0f
+            }
+        }
 
         qwertyKeyMap = QWERTYKeyMap()
 
@@ -531,7 +543,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             // 2. 通常キーへの適用 (normalKeyColorを使用)
             val normalDrawableState =
-                getDynamicNeumorphDrawable(normalKeyColor, radius).constantState
+                getDynamicKeyDrawable(normalKeyColor, radius).constantState
 
             val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
 
@@ -548,7 +560,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             // 3. 特殊キーへの適用 (specialKeyColorを使用)
             val specialDrawableState =
-                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+                getDynamicKeyDrawable(specialKeyColor, radius).constantState
 
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
@@ -576,97 +588,24 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
-     * @param baseColor キーのメインカラー
-     * @param radius キーの角丸の半径 (px)
-     */
-    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+    /** Creates a flat key selector for custom colors without inset highlight/shadow layers. */
+    private fun getDynamicKeyDrawable(baseColor: Int, radius: Float): Drawable {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = true) }
-        // 1. 色の計算
-        // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
-        val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
-        // シャドウ色: ベース色に黒(#000000)を混ぜて暗くする
-        val shadowColor = manipulateColor(baseColor, 0.8f)    // 輝度を下げる簡易版
-
-        // 2. ピクセル単位のオフセット量（4dpなどをpxに変換）
-        val density = context.resources.displayMetrics.density
-        val offset = (4 * density).toInt() // 影のずれ幅
-        val padding = (2 * density).toInt() // メイン面の縮小幅
-
-        // --- A. 通常状態 (Idle) の作成 ---
-
-        // レイヤー0: 暗い影 (右下に配置)
-        val shadowDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(shadowColor)
-        }
-
-        // レイヤー1: 明るいハイライト (左上に配置)
-        val highlightDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(highlightColor)
-        }
-
-        // レイヤー2: メインの面
-        val surfaceDrawable = GradientDrawable().apply {
+        val idleDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(baseColor)
         }
-
-        // LayerDrawableで重ねる (下から順に描画される)
-        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-
-        // インセット（余白）を設定して位置をずらす
-        // setLayerInset(index, left, top, right, bottom)
-
-        // 影: 左と上を空けて、右下に表示させる
-        idleLayer.setLayerInset(0, offset, offset, 0, 0)
-
-        // ハイライト: 右と下を空けて、左上に表示させる
-        idleLayer.setLayerInset(1, 0, 0, offset, offset)
-
-        // メイン面: 全体に少し余白を入れて中央に配置（影が見えるようにする）
-        idleLayer.setLayerInset(2, padding, padding, padding, padding)
-
-
-        // --- B. 押下状態 (Pressed) の作成 ---
-
-        // 押したときは凹む表現（影を消して少し暗くする、あるいは内側の影を擬似的に表現）
         val pressedDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
-            // ベース色より少し暗くすることで「押し込まれた」感を出す
             setColor(manipulateColor(baseColor, 0.95f))
         }
-        // Pressed状態はサイズを変えないため、IdleのSurfaceと同じ位置に合わせるためのInsetが必要ならLayerDrawableにする
-        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
-        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
-
-
-        // --- C. StateListDrawable (Selector) にまとめる ---
-        val stateListDrawable = android.graphics.drawable.StateListDrawable()
-
-        // 押された時
-        stateListDrawable.addState(
-            intArrayOf(android.R.attr.state_pressed),
-            pressedLayer
-        )
-        // 無効な時 (必要であれば)
-        stateListDrawable.addState(
-            intArrayOf(-android.R.attr.state_enabled),
-            pressedLayer // 簡易的にPressedと同じ、あるいは透明度を下げるなど
-        )
-        // 通常時
-        stateListDrawable.addState(
-            intArrayOf(),
-            idleLayer
-        )
-
-        return stateListDrawable
+        return android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(-android.R.attr.state_enabled), pressedDrawable)
+            addState(intArrayOf(), idleDrawable)
+        }
     }
 
     /**
@@ -1364,6 +1303,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setOnQWERTYKeyListener(listener: QWERTYKeyListener) {
         this.qwertyKeyListener = listener
+    }
+
+    /**
+     * Returns the physical release point associated with the most recent key callback exactly
+     * once. This lets a decoder distinguish a center tap from a miss near a neighbouring key.
+     */
+    fun consumeLastReleasedTapSample(): QwertyTapSample? = lastReleasedTapSample.also {
+        lastReleasedTapSample = null
     }
 
     fun setOnQwertyKeyTouchCancelListener(listener: QwertyKeyTouchCancelListener?) {
@@ -2145,6 +2092,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         if (!wasFlick) {
             pointerButtonMap[pointerId]?.let { view ->
+                lastReleasedTapSample = QwertyTapSample(
+                    x = x.toInt(),
+                    y = y.toInt(),
+                    eventTimeMillis = SystemClock.uptimeMillis(),
+                )
                 releaseTrackedView(pointerId, view)
             }
         }

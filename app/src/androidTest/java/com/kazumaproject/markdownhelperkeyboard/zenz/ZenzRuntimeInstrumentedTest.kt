@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntime
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntimeCallback
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeService
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
@@ -168,10 +169,9 @@ class ZenzRuntimeInstrumentedTest {
             }
         }
         this.connection = connection
-        val intent = Intent().setClassName(
-            context.packageName,
-            "${context.packageName}.zenz.runtime.ZenzRuntimeService",
-        )
+        // The applicationId can differ from the Kotlin namespace (for example the personal
+        // Mirror GODAN build). A class literal always resolves the manifest's actual class name.
+        val intent = Intent(context, ZenzRuntimeService::class.java)
         assertTrue(
             "Zenz runtime service could not be bound",
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE),

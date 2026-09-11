@@ -48,6 +48,10 @@ object AppPreference {
 
     internal const val GOJUON_KEYBOARD_TYPE_MIGRATION_KEY =
         "gojuon_keyboard_type_migrated_v1"
+    internal const val MIRROR_GODAN_GEOMETRY_MIGRATION_KEY =
+        "mirror_godan_compact_geometry_migrated_v1"
+    internal const val MIRROR_GODAN_CANDIDATE_TEXT_MIGRATION_KEY =
+        "mirror_godan_candidate_text_migrated_v2"
 
     const val UTILITY_CALCULATION_ENABLED_KEY = "utility_calculation_enabled"
     const val UTILITY_UNIT_CONVERSION_ENABLED_KEY = "utility_unit_conversion_enabled"
@@ -160,7 +164,7 @@ object AppPreference {
     private val SUPPRESS_HENTAIGANA_CANDIDATES_PREFERENCE =
         Pair("suppress_hentaigana_candidates_preference", false)
     private val ZERO_QUERY_SUGGESTION_PREFERENCE =
-        Pair("zero_query_suggestion_preference", false)
+        Pair("zero_query_suggestion_preference", true)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
@@ -273,7 +277,7 @@ object AppPreference {
     private val QWERTY_SHOW_CURSOR_BUTTONS = Pair("qwerty_show_cursor_buttons_preference", false)
 
     private val QWERTY_SHOW_KEYMAP_SYMBOLS =
-        Pair("qwerty_show_keymap_symbols_romaji_preference", false)
+        Pair("qwerty_show_keymap_symbols_romaji_preference", true)
 
     private val QWERTY_SHOW_NUMBER_BUTTONS =
         Pair("qwerty_show_number_keys_buttons_preference", false)
@@ -343,25 +347,25 @@ object AppPreference {
     private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
         Pair("qwerty_show_kutouten_buttons_preference", false)
 
-    private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
+    private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 260)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("keyboard_vertical_margin_bottom_preference", 0)
     private val KEYBOARD_FLOATING_PREFERENCE = Pair("keyboard_floating_preference", false)
-    private val QWERTY_KEYBOARD_HEIGHT = Pair("qwerty_keyboard_height_preference", 220)
+    private val QWERTY_KEYBOARD_HEIGHT = Pair("qwerty_keyboard_height_preference", 270)
     private val QWERTY_KEYBOARD_WIDTH = Pair("qwerty_keyboard_width_preference", 100)
     private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("qwerty_keyboard_vertical_margin_bottom_preference", 0)
     private val QWERTY_KEYBOARD_POSITION = Pair("qwerty_keyboard_position_preference", true)
 
-    private val KEYBOARD_HEIGHT_LANDSCAPE = Pair("keyboard_height_landscape_preference", 220)
+    private val KEYBOARD_HEIGHT_LANDSCAPE = Pair("keyboard_height_landscape_preference", 240)
     private val KEYBOARD_WIDTH_LANDSCAPE = Pair("keyboard_width_landscape_preference", 100)
     private val KEYBOARD_POSITION_LANDSCAPE = Pair("keyboard_position_landscape_preference", true)
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE =
         Pair("keyboard_vertical_margin_bottom_landscape_preference", 0)
     private val QWERTY_KEYBOARD_HEIGHT_LANDSCAPE =
-        Pair("qwerty_keyboard_height_landscape_preference", 220)
+        Pair("qwerty_keyboard_height_landscape_preference", 240)
     private val QWERTY_KEYBOARD_WIDTH_LANDSCAPE =
         Pair("qwerty_keyboard_width_landscape_preference", 100)
     private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE =
@@ -370,9 +374,9 @@ object AppPreference {
         Pair("qwerty_keyboard_position_landscape_preference", true)
 
     private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_height_dp_landscape_preference", 60)
+        Pair("candidate_view_height_dp_landscape_preference", 56)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_empty_height_dp_landscape_preference", 110)
+        Pair("candidate_view_empty_height_dp_landscape_preference", 56)
 
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val FLICK_EDITOR_PREVIEW = Pair(FLICK_EDITOR_PREVIEW_KEY, false)
@@ -449,7 +453,7 @@ object AppPreference {
     private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
 
     private val SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE =
-        Pair("shortcut_toolbar_visibility_preference", false)
+        Pair("shortcut_toolbar_visibility_preference", true)
     private val SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE =
         Pair("shortcut_toolbar_integrated_in_suggestion_preference", false)
     private val SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE =
@@ -530,7 +534,7 @@ object AppPreference {
     private val FLICK_KEY_HEIGHT_SCALE_PERCENT =
         Pair("flick_key_height_scale_percent_preference", 160)
     private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 80)
-    private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 16.0f)
+    private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 20.0f)
 
     private val FLICK_SPECIAL_KEY_TEXT_SIZE_SP =
         Pair("flick_special_key_text_size_sp_preference", 12.0f)
@@ -559,31 +563,31 @@ object AppPreference {
             TfbiFlickStartPositionMode.TOUCH_POINT.preferenceValue
         )
 
-    private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
+    private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 17.0f)
 
-    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
+    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 56)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
-        Pair("candidate_view_empty_height_dp_preference", 110)
+        Pair("candidate_view_empty_height_dp_preference", 56)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_view_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_view_height_portrait_column_1_dp_preference", 56)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_2_DP =
         Pair("candidate_view_height_portrait_column_2_dp_preference", 120)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_3_DP =
         Pair("candidate_view_height_portrait_column_3_dp_preference", 160)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP =
-        Pair("candidate_view_height_landscape_column_1_dp_preference", 60)
+        Pair("candidate_view_height_landscape_column_1_dp_preference", 56)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP =
         Pair("candidate_view_height_landscape_column_2_dp_preference", 90)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP =
         Pair("candidate_view_height_landscape_column_3_dp_preference", 120)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP =
-        Pair("candidate_default_height_portrait_column_1_dp_preference", 110)
+        Pair("candidate_default_height_portrait_column_1_dp_preference", 56)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP =
         Pair("candidate_default_height_portrait_column_2_dp_preference", 120)
     private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP =
         Pair("candidate_default_height_portrait_column_3_dp_preference", 160)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP =
-        Pair("candidate_default_height_landscape_column_1_dp_preference", 60)
+        Pair("candidate_default_height_landscape_column_1_dp_preference", 56)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP =
         Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
     private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
@@ -661,7 +665,7 @@ object AppPreference {
         Pair("tenkey_show_switch_ime_button_preference", true)
 
     private val ENABLE_ZENZ_PREFERENCE =
-        Pair("enable_ai_conversion_zenz_preference", false)
+        Pair("enable_ai_conversion_zenz_preference", true)
 
     private val ENABLE_ZENZAI_PREFERENCE =
         Pair("enable_ai_conversion_zenzai_preference", false)
@@ -673,7 +677,7 @@ object AppPreference {
         Pair("conversion_key_long_press_ai_conversion_preference", false)
 
     private val ENABLE_ZENZ_RERANK_PREFERENCE =
-        Pair("enable_zenz_rerank_preference", false)
+        Pair("enable_zenz_rerank_preference", true)
 
     private val ZENZ_DEBOUNCE_TIME_PREFERENCE = Pair("zenz_debounce_time_preference", 300)
 
@@ -718,13 +722,13 @@ object AppPreference {
         Pair("conversion_candidates_romaji_enable_preference", false)
 
     private val LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE =
-        Pair("learn_first_candidate_dictionary_preference", false)
+        Pair("learn_first_candidate_dictionary_preference", true)
 
     private val LEARN_DICTIONARY_ALLOW_MIXED_SYMBOLS_NUMBERS_PREFERENCE =
         Pair("learn_dictionary_allow_mixed_symbols_numbers_preference", true)
 
     private val ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE =
-        Pair("enable_prediction_search_learn_dictionary_preference", false)
+        Pair("enable_prediction_search_learn_dictionary_preference", true)
 
     private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 4)
     private val LEARN_PREDICTION_CANDIDATE_LIMIT_PREFERENCE =
@@ -914,6 +918,61 @@ object AppPreference {
         migrateSymbolEmojiCandidatePreferenceIfNeeded()
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded(context)
+        migrateMirrorGodanGeometryIfNeeded()
+        migrateMirrorGodanCandidateTextSizeIfNeeded()
+    }
+
+    private fun migrateMirrorGodanCandidateTextSizeIfNeeded() {
+        if (preferences.getBoolean(MIRROR_GODAN_CANDIDATE_TEXT_MIGRATION_KEY, false)) return
+
+        val legacyDefault = 14.0f
+        val currentValue = runCatching {
+            preferences.getFloat(CANDIDATE_LETTER_SIZE.first, legacyDefault)
+        }.getOrDefault(legacyDefault)
+        preferences.edit()
+            .apply {
+                if (
+                    !preferences.contains(CANDIDATE_LETTER_SIZE.first) ||
+                    currentValue == legacyDefault ||
+                    currentValue == 16.0f
+                ) {
+                    putFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
+                }
+            }
+            .putBoolean(MIRROR_GODAN_CANDIDATE_TEXT_MIGRATION_KEY, true)
+            .apply()
+    }
+
+    private fun migrateMirrorGodanGeometryIfNeeded() {
+        if (preferences.getBoolean(MIRROR_GODAN_GEOMETRY_MIGRATION_KEY, false)) return
+
+        val editor = preferences.edit()
+        fun replaceLegacyDefault(
+            preference: Pair<String, Int>,
+            legacyDefault: Int,
+        ) {
+            val currentValue = runCatching {
+                preferences.getInt(preference.first, legacyDefault)
+            }.getOrDefault(legacyDefault)
+            if (!preferences.contains(preference.first) || currentValue == legacyDefault) {
+                editor.putInt(preference.first, preference.second)
+            }
+        }
+
+        replaceLegacyDefault(KEYBOARD_HEIGHT, legacyDefault = 220)
+        replaceLegacyDefault(KEYBOARD_HEIGHT_LANDSCAPE, legacyDefault = 220)
+        replaceLegacyDefault(CANDIDATE_VIEW_HEIGHT_DP, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_VIEW_EMPTY_HEIGHT_DP, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE, legacyDefault = 60)
+        replaceLegacyDefault(CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP, legacyDefault = 60)
+        replaceLegacyDefault(CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP, legacyDefault = 60)
+        replaceLegacyDefault(CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP, legacyDefault = 110)
+        replaceLegacyDefault(CANDIDATE_DEFAULT_EMPTY_HEIGHT_DP_LANDSCAPE, legacyDefault = 110)
+        editor.putBoolean(MIRROR_GODAN_GEOMETRY_MIGRATION_KEY, true)
+        editor.apply()
     }
 
     fun migrateGojuonKeyboardTypeIfNeeded(context: Context = appContext) {
@@ -957,7 +1016,7 @@ object AppPreference {
 
     private fun defaultKeyboardOrder(isTablet: Boolean = isTabletDevice): List<KeyboardType> {
         return listOf(
-            if (isTablet) KeyboardType.GOJUON else KeyboardType.TENKEY,
+            KeyboardType.SUMIRE,
             KeyboardType.QWERTY,
         )
     }
@@ -2296,7 +2355,7 @@ object AppPreference {
             KEYBOARD_HEIGHT.first, KEYBOARD_HEIGHT.second
         )
         set(value) = preferences.edit {
-            it.putInt(KEYBOARD_HEIGHT.first, value ?: 280)
+            it.putInt(KEYBOARD_HEIGHT.first, value ?: KEYBOARD_HEIGHT.second)
         }
 
     var keyboard_width: Int?
@@ -2312,7 +2371,7 @@ object AppPreference {
             QWERTY_KEYBOARD_HEIGHT.first, QWERTY_KEYBOARD_HEIGHT.second
         )
         set(value) = preferences.edit {
-            it.putInt(QWERTY_KEYBOARD_HEIGHT.first, value ?: 220)
+            it.putInt(QWERTY_KEYBOARD_HEIGHT.first, value ?: QWERTY_KEYBOARD_HEIGHT.second)
         }
 
     var qwerty_keyboard_width: Int?
@@ -2360,7 +2419,7 @@ object AppPreference {
             KEYBOARD_HEIGHT_LANDSCAPE.first, KEYBOARD_HEIGHT_LANDSCAPE.second
         )
         set(value) = preferences.edit {
-            it.putInt(KEYBOARD_HEIGHT_LANDSCAPE.first, value ?: 220)
+            it.putInt(KEYBOARD_HEIGHT_LANDSCAPE.first, value ?: KEYBOARD_HEIGHT_LANDSCAPE.second)
         }
 
     var keyboard_width_landscape: Int?
@@ -2393,7 +2452,10 @@ object AppPreference {
             QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.first, QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.second
         )
         set(value) = preferences.edit {
-            it.putInt(QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.first, value ?: 220)
+            it.putInt(
+                QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.first,
+                value ?: QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.second
+            )
         }
 
     var qwerty_keyboard_width_landscape: Int?

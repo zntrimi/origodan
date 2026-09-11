@@ -46,7 +46,7 @@
         <SwitchPreferenceCompat
             android:key="shortcut_toolbar_visibility_preference"
             android:title="@string/shortcut_toolbar_title"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:summary="@string/shortcut_toolbar_summary" />
 
         <SwitchPreferenceCompat

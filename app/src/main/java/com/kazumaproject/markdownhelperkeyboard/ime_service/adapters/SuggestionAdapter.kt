@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.animation.ValueAnimator
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -322,7 +323,7 @@ class SuggestionAdapter internal constructor(
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
-    private var candidateTextSize: Float = 14f
+    private var candidateTextSize: Float = 17f
     private var candidateTextColor: Int? = null
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showDictionaryCandidateLabels: Boolean = false
@@ -1141,6 +1142,41 @@ class SuggestionAdapter internal constructor(
 
     inner class ShortcutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageView: ImageView = itemView.findViewById(R.id.item_image)
+        private var voicePulseAnimator: ValueAnimator? = null
+
+        fun setVoiceInputActive(active: Boolean) {
+            voicePulseAnimator?.cancel()
+            voicePulseAnimator = null
+            imageView.alpha = 1f
+            imageView.scaleX = 1f
+            imageView.scaleY = 1f
+            if (!active) return
+            imageView.setColorFilter(
+                ContextCompat.getColor(imageView.context, com.kazumaproject.core.R.color.red),
+                PorterDuff.Mode.SRC_IN,
+            )
+            voicePulseAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 560L
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+                addUpdateListener { animator ->
+                    val progress = animator.animatedValue as Float
+                    imageView.alpha = 1f - 0.42f * progress
+                    val scale = 1f + 0.16f * progress
+                    imageView.scaleX = scale
+                    imageView.scaleY = scale
+                }
+                start()
+            }
+        }
+
+        fun recycle() {
+            voicePulseAnimator?.cancel()
+            voicePulseAnimator = null
+            imageView.alpha = 1f
+            imageView.scaleX = 1f
+            imageView.scaleY = 1f
+        }
     }
 
     inner class ShortcutEntryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -1365,6 +1401,9 @@ class SuggestionAdapter internal constructor(
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
         if (holder is InlineSuggestionViewHolder) {
             detachInlineSuggestionView(holder)
+        }
+        if (holder is ShortcutViewHolder) {
+            holder.recycle()
         }
         super.onViewRecycled(holder)
     }
@@ -1611,7 +1650,10 @@ class SuggestionAdapter internal constructor(
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         Timber.d("SuggestionAdapter onBindClipboardPreviewViewHolder: ${state.clipboardText} ${state.pasteEnabled}")
         holder.itemView.translationX = if (state.offsetForLeadingShortcutEntry) {
-            -holder.itemView.resources.displayMetrics.density * 28f
+            // The clipboard item itself occupies the full strip width, but it is laid out
+            // after the 56dp menu entry. Compensate for that entire leading item so the
+            // clipboard card is centered on the display rather than on its shifted item.
+            -holder.itemView.resources.displayMetrics.density * 56f
         } else {
             0f
         }
@@ -1770,6 +1812,9 @@ class SuggestionAdapter internal constructor(
             } ?: clearColorFilter()
         }
         holder.itemView.contentDescription = shortcutType.description
+        holder.setVoiceInputActive(
+            shortcutType == ShortcutType.VOICE_INPUT && shortcutType in activeShortcutTypes,
+        )
         holder.itemView.setOnClickListener {
             val adapterPosition = holder.bindingAdapterPosition
             if (adapterPosition != RecyclerView.NO_POSITION) {
@@ -1785,7 +1830,7 @@ class SuggestionAdapter internal constructor(
         holder: ShortcutEntryViewHolder,
     ) {
         holder.imageView.apply {
-            setImageResource(R.drawable.more_horiz_24px)
+            setImageResource(R.drawable.apps_grid_24px)
             contentDescription = context.getString(R.string.shortcut_entry_content_description)
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)

@@ -7,6 +7,13 @@ data class QwertyInputPointerPoint(
     val pointerId: Int
 )
 
+/** Final position of an ordinary (non-glide) QWERTY tap, in keyboard-view coordinates. */
+data class QwertyTapSample(
+    val x: Int,
+    val y: Int,
+    val eventTimeMillis: Long,
+)
+
 data class QwertyInputPointers(
     val points: List<QwertyInputPointerPoint>
 )

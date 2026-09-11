@@ -17,6 +17,11 @@ import java.util.BitSet
 
 class LOUDSWithTermId {
 
+    data class FuzzySearchResult(
+        val yomi: String,
+        val editDistance: Int,
+    )
+
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
     var labels: CharArray = charArrayOf()
@@ -643,6 +648,97 @@ class LOUDSWithTermId {
         // ★ 5番目の引数として「省略発生フラグ」の初期値 false を渡す
         searchRecursiveWithOmission(str, 0, 0, "", false, results, succinctBitVector)
         return results.toList()
+    }
+
+    /**
+     * Finds complete dictionary readings within a bounded optimal-string-alignment distance.
+     * Traversing the trie and pruning rows whose minimum already exceeds [maxDistance] avoids
+     * enumerating the English dictionary for every key stroke.
+     */
+    fun fuzzySearch(
+        input: String,
+        succinctBitVector: SuccinctBitVector,
+        maxDistance: Int = 1,
+        maxResults: Int = 96,
+        maxVisitedNodes: Int = 20_000,
+    ): List<FuzzySearchResult> {
+        if (input.isEmpty() || maxDistance < 1 || maxResults < 1) return emptyList()
+        val normalizedInput = input.lowercase()
+        val initialRow = IntArray(normalizedInput.length + 1) { it }
+        val results = ArrayList<FuzzySearchResult>(maxResults.coerceAtMost(128))
+        var visitedNodes = 0
+
+        fun visit(
+            nodePosition: Int,
+            prefix: String,
+            previousRow: IntArray,
+            previousPreviousRow: IntArray?,
+            previousCharacter: Char?,
+        ) {
+            if (visitedNodes >= maxVisitedNodes || results.size >= maxResults) return
+            var childPosition = firstChild(nodePosition, succinctBitVector)
+            while (
+                childPosition >= 0 &&
+                LBS[childPosition] &&
+                visitedNodes < maxVisitedNodes &&
+                results.size < maxResults
+            ) {
+                visitedNodes++
+                val character = labels[succinctBitVector.rank1(childPosition)]
+                val currentPrefix = prefix + character
+                val currentRow = IntArray(normalizedInput.length + 1)
+                currentRow[0] = previousRow[0] + 1
+                var rowMinimum = currentRow[0]
+
+                for (column in 1..normalizedInput.length) {
+                    val substitutionCost =
+                        if (character == normalizedInput[column - 1]) 0 else 1
+                    var value = minOf(
+                        previousRow[column] + 1,
+                        currentRow[column - 1] + 1,
+                        previousRow[column - 1] + substitutionCost,
+                    )
+                    if (
+                        previousPreviousRow != null &&
+                        previousCharacter != null &&
+                        column > 1 &&
+                        character == normalizedInput[column - 2] &&
+                        previousCharacter == normalizedInput[column - 1]
+                    ) {
+                        value = minOf(value, previousPreviousRow[column - 2] + 1)
+                    }
+                    currentRow[column] = value
+                    rowMinimum = minOf(rowMinimum, value)
+                }
+
+                val distance = currentRow[normalizedInput.length]
+                if (isLeaf[childPosition] && distance in 1..maxDistance) {
+                    results += FuzzySearchResult(currentPrefix, distance)
+                }
+                if (
+                    rowMinimum <= maxDistance &&
+                    currentPrefix.length < normalizedInput.length + maxDistance
+                ) {
+                    visit(
+                        nodePosition = childPosition,
+                        prefix = currentPrefix,
+                        previousRow = currentRow,
+                        previousPreviousRow = previousRow,
+                        previousCharacter = character,
+                    )
+                }
+                childPosition++
+            }
+        }
+
+        visit(
+            nodePosition = 0,
+            prefix = "",
+            previousRow = initialRow,
+            previousPreviousRow = null,
+            previousCharacter = null,
+        )
+        return results.sortedWith(compareBy(FuzzySearchResult::editDistance, FuzzySearchResult::yomi))
     }
 
     /**

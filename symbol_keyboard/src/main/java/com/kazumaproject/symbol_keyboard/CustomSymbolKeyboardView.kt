@@ -77,6 +77,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     // View References for functional keys
     private val returnButton: ShapeableImageView
+    private val searchButton: ShapeableImageView
     private val deleteButton: ShapeableImageView
 
     // Theme Colors (Default values)
@@ -107,6 +108,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
 
     private var returnListener: ReturnToTenKeyButtonClickListener? = null
+    private var emojiSearchClickListener: (() -> Unit)? = null
     private var deleteClickListener: DeleteButtonSymbolViewClickListener? = null
     private var deleteLongListener: DeleteButtonSymbolViewLongClickListener? = null
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
@@ -126,6 +128,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
         returnButton = findViewById(R.id.return_jp_keyboard_button)
+        searchButton = findViewById(R.id.emoji_search_button)
         deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
 
         // Initialize default colors
@@ -196,6 +199,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         returnButton.setOnClickListener {
             returnListener?.onClick()
+        }
+        searchButton.setOnClickListener {
+            emojiSearchClickListener?.invoke()
         }
 
         deleteButton.apply {
@@ -324,7 +330,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     ) {
         themeRevision++
         skinTonePopup?.dismiss()
-        listOf(this, categoryTab, modeTab, returnButton, deleteButton).forEach(::rememberAppearance)
+        listOf(this, categoryTab, modeTab, returnButton, searchButton, deleteButton).forEach(::rememberAppearance)
         listOf(categoryTab, modeTab).forEach { it.getChildAt(0)?.let(::rememberAppearance) }
         keyboardSkinId = skinId
         this.themeBackgroundColor = backgroundColor
@@ -380,13 +386,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         // 5. 機能キー (Return/Delete) のニューモーフィズム設定
         val keyRadius = dpToPx(25).toFloat()
         returnButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
+        searchButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
         deleteButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
 
         val p = dpToPx(8)
         returnButton.setPadding(p, p, p, p)
+        searchButton.setPadding(p, p, p, p)
         deleteButton.setPadding(p, p, p, p)
 
         returnButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        searchButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
         deleteButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
 
         if (currentMode == SymbolMode.CLIPBOARD) {
@@ -584,6 +593,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     fun setOnReturnToTenKeyButtonClickListener(l: ReturnToTenKeyButtonClickListener) {
         returnListener = l
+    }
+
+    fun setOnEmojiSearchClickListener(listener: () -> Unit) {
+        emojiSearchClickListener = listener
     }
 
     fun setOnDeleteButtonSymbolViewClickListener(l: DeleteButtonSymbolViewClickListener) {

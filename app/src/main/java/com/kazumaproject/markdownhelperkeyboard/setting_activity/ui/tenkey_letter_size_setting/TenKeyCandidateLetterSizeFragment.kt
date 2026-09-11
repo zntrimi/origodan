@@ -46,7 +46,7 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
     private val defaultKeyScalePercent = 100
 
     // 候補サイズもプレビュー用に必要であれば定義
-    private val defaultCandidateTextSize = 14.0f
+    private val defaultCandidateTextSize = 17.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

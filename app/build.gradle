@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.kazumaproject.markdownhelperkeyboard"
+        applicationId "dev.imaizentarou.mirrorgodan"
         minSdk 24
         targetSdk 36
         versionCode 807
@@ -46,6 +46,9 @@ android {
     productFlavors {
         full {
             dimension "edition"
+            // Personal Mirror GODAN builds replace the already-installed Lite APK so that
+            // keyboard selection, learned conversions, and layout preferences are preserved.
+            applicationIdSuffix ".lite"
             buildConfigField "boolean", "HAS_ZENZ", "true"
             buildConfigField "boolean", "HAS_GEMMA", "true"
             buildConfigField "String", "APP_EDITION", "\"full\""
@@ -1076,6 +1079,7 @@ dependencies {
     implementation project(':gojuon_keyboard')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
+    implementation project(':latinime')
     fullImplementation project(':zenz')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'

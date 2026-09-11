@@ -37,7 +37,7 @@
         android:layout_width="0dp"
         android:layout_height="64dp"
         android:orientation="horizontal"
-        android:weightSum="5"
+        android:weightSum="6"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -50,6 +50,17 @@
             android:background="@drawable/symbol_keyboard_buttons_bg"
             android:scaleType="center"
             android:src="@drawable/language_japanese_kana_24px"
+            android:tint="@color/tab_unselected" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/emoji_search_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/symbol_keyboard_buttons_bg"
+            android:contentDescription="@string/emoji_search"
+            android:scaleType="center"
+            android:src="@drawable/baseline_search_24"
             android:tint="@color/tab_unselected" />
 
         <com.google.android.material.tabs.TabLayout

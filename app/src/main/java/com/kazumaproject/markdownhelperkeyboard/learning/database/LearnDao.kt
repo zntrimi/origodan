@@ -105,6 +105,7 @@ interface LearnDao {
                         score = LearningScorePolicy.reinforce(
                             existingScore = existing.score,
                             incomingScore = incoming.score,
+                            repetitions = incoming.usageCount,
                         ),
                         leftId = incoming.leftId ?: existing.leftId,
                         rightId = incoming.rightId ?: existing.rightId,

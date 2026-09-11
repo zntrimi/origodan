@@ -128,7 +128,7 @@
             android:dependency="learn_dictionary_preference"
             android:key="learn_first_candidate_dictionary_preference"
             android:title="@string/learn_dictionary_preference_title"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:summary="@string/learn_dictionary_preference_summary" />
 
         <SwitchPreferenceCompat
@@ -142,7 +142,7 @@
             android:dependency="learn_dictionary_preference"
             android:key="enable_prediction_search_learn_dictionary_preference"
             android:title="@string/enable_prediction_search_learn_dictionary_preference_titile"
-            app:defaultValue="false"
+            app:defaultValue="true"
             app:summary="@string/enable_prediction_search_learn_dictionary_preference_summary" />
 
         <SeekBarPreference
@@ -215,7 +215,7 @@
 
     <PreferenceCategory android:title="@string/category_zero_query_suggestion_title">
         <SwitchPreferenceCompat
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="zero_query_suggestion_preference"
             android:summaryOff="@string/zero_query_suggestion_summary_off"
             android:summaryOn="@string/zero_query_suggestion_summary_on"

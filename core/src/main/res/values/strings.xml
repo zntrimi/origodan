@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sumire Japanese Keyboard</string>
+    <string name="app_name">Mirror GODAN</string>
 
     <string name="string_あ">あ</string>
     <string name="string_い">い</string>
@@ -90,7 +90,7 @@
     <string name="string_key11_number">"()[]"</string>
     <string name="string_key12_number">"   .,-/   "</string>
     <string name="md">記</string>
-    <string name="title_activity_main">Sumire Japanese Keyboard</string>
+    <string name="title_activity_main">Mirror GODAN</string>
     <string name="title_learn_dictionary">Learning</string>
     <string name="title_dashboard">Settings</string>
     <string name="title_notifications">Notifications</string>

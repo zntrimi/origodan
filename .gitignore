@@ -12,6 +12,7 @@
 .idea/copilotDiffState.xml
 .DS_Store
 /build
+**/build/
 /captures
 .externalNativeBuild
 .cxx
@@ -23,4 +24,3 @@ app/fullStandard/
 app/liteFdroid/
 app/liteStandard
 .idea/gradle.xml
-

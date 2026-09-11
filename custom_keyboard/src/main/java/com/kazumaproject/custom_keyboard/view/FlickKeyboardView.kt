@@ -1056,7 +1056,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun extractInputMap(actionMap: Map<FlickDirection, FlickAction>): Map<FlickDirection, String> {
         return actionMap.mapValues { (_, flickAction) ->
-            (flickAction as? FlickAction.Input)?.char ?: ""
+            (flickAction as? FlickAction.Input)?.let { it.label ?: it.char } ?: ""
         }
     }
 
@@ -1286,7 +1286,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
+                stateListAnimator = null
                 elevation = 0f
+                translationZ = 0f
                 KeyIconResolver.setImage(this, keyData)
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.MATRIX
@@ -1356,7 +1358,9 @@ class FlickKeyboardView @JvmOverloads constructor(
             AutoSizeButton(context).apply {
                 isFocusable = false
                 isAllCaps = false
+                stateListAnimator = null
                 elevation = 0f
+                translationZ = 0f
 
                 applyButtonText(this, keyData)
 
@@ -1797,6 +1801,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 )
                             )
                         }
+                    }
+
+                    if (keyView is AutoSizeButton) {
+                        applyGuideLabels(
+                            keyView,
+                            keyData,
+                            extractInputMap(displayFlickActionMap),
+                        )
                     }
 
                     crossFlickControllers.add(controller)
@@ -2903,8 +2915,14 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
-        if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) {
-            return findNearestKeyTarget(displayX, displayY)
+        when (keyHitTestMode) {
+            KeyHitTestMode.NEAREST_KEY -> return findNearestKeyTarget(displayX, displayY)
+            KeyHitTestMode.NEAREST_KEY_EXCLUDING_SPACERS -> {
+                if (isInsideExplicitSpacer(displayX, displayY)) return null
+                return findNearestKeyTarget(displayX, displayY)
+            }
+
+            KeyHitTestMode.KEY_BOUNDS -> Unit
         }
         val location = IntArray(2)
         for (i in 0 until childCount) {
@@ -2927,6 +2945,23 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    private fun isInsideExplicitSpacer(displayX: Float, displayY: Float): Boolean {
+        val location = IntArray(2)
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            // android.widget.Space is INVISIBLE by design, but still owns a real grid cell.
+            if (child !is Space || child.width <= 0 || child.height <= 0) continue
+            child.getLocationOnScreen(location)
+            if (
+                displayX >= location[0] && displayX < location[0] + child.width &&
+                displayY >= location[1] && displayY < location[1] + child.height
+            ) {
+                return true
+            }
+        }
+        return false
     }
 
     /**
@@ -3025,10 +3060,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         val action = ev.actionMasked
-        Log.d(TAG, "onInterceptTouchEvent: ${MotionEvent.actionToString(action)} $")
 
         if (action == MotionEvent.ACTION_DOWN) {
-            Log.d(TAG, "-> Intercepting gesture from ACTION_DOWN. Returning true.")
             return true
         }
 
@@ -3136,11 +3169,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val target = motionTargets[existingPointerId]
                     val downTime = pointerDownTime[existingPointerId]
 
-                    Log.d(
-                        "FlickKeyboardView",
-                        "MotionEvent.ACTION_POINTER_DOWN called ${event.metaState} $target $downTime"
-                    )
-
                     if (target != null && downTime != null) {
                         val existingPointerIndex = event.findPointerIndex(existingPointerId)
                         if (existingPointerIndex != -1) {
@@ -3160,20 +3188,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                         dynamicKeyMap.entries.find { it.value.view == target?.view }
                     if (matchingEntry != null) {
                         val keyInfo = matchingEntry.value
-                        Log.d(
-                            TAG,
-                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a dynamic key. KeyInfo: $keyInfo"
-                        )
                         if (keyInfo.keyData.action == KeyAction.InputText(text = "^_^") ||
                             keyInfo.keyData.keyId == "switch_next_ime"
                         ) {
                             return true
                         }
-                    } else {
-                        Log.d(
-                            TAG,
-                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a non-dynamic key."
-                        )
                     }
                 }
 
@@ -3225,15 +3244,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     return false
                 }
 
-                Log.d(
-                    "FlickKeyboardView",
-                    "ACTION_POINTER_UP: pointerId=$pointerId, index=$pointerIndex"
-                )
-
                 motionTargets[pointerId]?.let { target ->
                     val downTime = pointerDownTime[pointerId]!!
-
-                    Log.d("FlickKeyboardView", "ACTION_POINTER_UP: Found target! $target")
 
                     dispatchPointerEvent(
                         source = event,

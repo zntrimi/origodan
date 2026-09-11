@@ -36,6 +36,8 @@ import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleEnt
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordMatchModeConverter
+import com.kazumaproject.markdownhelperkeyboard.next_word_learning.database.LearnedNextWordDao
+import com.kazumaproject.markdownhelperkeyboard.next_word_learning.database.LearnedNextWordEntity
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
@@ -83,8 +85,9 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
         TextMacro::class,
+        LearnedNextWordEntity::class,
     ],
-    version = 47,
+    version = 48,
     exportSchema = false
 )
 @TypeConverters(
@@ -114,6 +117,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun sumireSpecialKeyPlacementOverrideDao(): SumireSpecialKeyPlacementOverrideDao
     abstract fun customZeroQueryDao(): CustomZeroQueryDao
     abstract fun textMacroDao(): TextMacroDao
+    abstract fun learnedNextWordDao(): LearnedNextWordDao
 
     companion object {
 
@@ -1207,6 +1211,28 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE `ng_word` ADD COLUMN `matchMode` TEXT NOT NULL DEFAULT 'PARTIAL'"
+                )
+            }
+        }
+
+        val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `learned_next_words` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `previousText` TEXT NOT NULL,
+                        `nextText` TEXT NOT NULL,
+                        `usageCount` INTEGER NOT NULL,
+                        `lastUsedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_learned_next_words_previousText` ON `learned_next_words` (`previousText`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_learned_next_words_previousText_nextText` ON `learned_next_words` (`previousText`, `nextText`)"
                 )
             }
         }

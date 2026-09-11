@@ -68,7 +68,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     private val maxHeightDp = 300
     private val minCandidateTextSize = 10f
     private val maxCandidateTextSize = 40f
-    private val defaultCandidateTextSize = 14.0f
+    private val defaultCandidateTextSize = 17.0f
 
     private val previewCandidates = createCandidateHeightPreviewCandidates()
 

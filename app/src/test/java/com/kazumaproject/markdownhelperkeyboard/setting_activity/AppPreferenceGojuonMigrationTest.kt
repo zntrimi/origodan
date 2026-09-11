@@ -66,7 +66,7 @@ class AppPreferenceGojuonMigrationTest {
     }
 
     @Test
-    fun phoneDoesNotMarkTabletMigrationComplete() {
+    fun phoneUsesMirrorGodanDefaultAndDoesNotMarkTabletMigrationComplete() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit()
             .clear()
@@ -76,7 +76,7 @@ class AppPreferenceGojuonMigrationTest {
         AppPreference.init(context)
 
         assertEquals(
-            listOf(KeyboardType.TENKEY, KeyboardType.QWERTY),
+            listOf(KeyboardType.SUMIRE, KeyboardType.QWERTY),
             AppPreference.keyboard_order,
         )
         assertFalse(preferences.getBoolean(AppPreference.GOJUON_KEYBOARD_TYPE_MIGRATION_KEY, false))

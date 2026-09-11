@@ -61,7 +61,9 @@ class ConversionLearningSession {
                 score = phraseScore(phraseFragments),
                 leftId = phraseFragments.first().leftId,
                 rightId = phraseFragments.last().rightId,
-                usageCount = 1,
+                usageCount = phraseFragments.maxOf {
+                    LearningScorePolicy.usageWeight(it.candidateIndex, it.explicitlySelected)
+                },
                 lastUsedAt = timestamp,
                 isPhrase = true,
             )
@@ -73,7 +75,9 @@ class ConversionLearningSession {
             score = phraseScore(recorded),
             leftId = recorded.firstOrNull()?.leftId,
             rightId = recorded.lastOrNull()?.rightId,
-            usageCount = 1,
+            usageCount = recorded.maxOf {
+                LearningScorePolicy.usageWeight(it.candidateIndex, it.explicitlySelected)
+            },
             lastUsedAt = timestamp,
             isPhrase = recorded.size > 1 || reading != recorded.first().reading,
         )
@@ -93,7 +97,7 @@ class ConversionLearningSession {
         score = LearningScorePolicy.initial(candidateScore, candidateIndex),
         leftId = leftId,
         rightId = rightId,
-        usageCount = 1,
+        usageCount = LearningScorePolicy.usageWeight(candidateIndex, explicitlySelected),
         lastUsedAt = timestamp,
         isPhrase = isPhrase,
     )

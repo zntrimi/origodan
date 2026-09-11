@@ -162,13 +162,23 @@ object CandidateStripContentResolver {
         return state.shortcutToolbarVisible &&
             state.shortcutToolbarIntegratedInSuggestion &&
             state.shortcutItems.isNotEmpty() &&
-            clipboardPreview != null
+            if (state.compactShortcutMenu) {
+                !state.symbolKeyboardShown &&
+                    state.inputStringEmpty &&
+                    state.tailEmpty &&
+                    !state.candidatesShown &&
+                    !state.customLayoutPickerShown &&
+                    !state.selectionActionsShown
+            } else {
+                clipboardPreview != null
+            }
     }
 
     private fun shouldShowIntegratedShortcutItems(
         state: CandidateStripInputState,
         clipboardPreview: ClipboardPreviewState?
     ): Boolean {
+        if (state.compactShortcutMenu) return false
         if (!state.shortcutToolbarVisible) return false
         if (!state.shortcutToolbarIntegratedInSuggestion) return false
         if (state.shortcutItems.isEmpty()) return false

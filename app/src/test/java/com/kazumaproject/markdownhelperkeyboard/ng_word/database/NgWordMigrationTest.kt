@@ -42,14 +42,21 @@ class NgWordMigrationTest {
                 initial.close()
             }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_46_47)
+                .addMigrations(
+                    AppDatabase.MIGRATION_46_47,
+                    AppDatabase.MIGRATION_47_48,
+                )
                 .allowMainThreadQueries().build()
             try {
                 val db = migrated.openHelper.writableDatabase
-                assertEquals(47, db.version)
+                assertEquals(48, db.version)
                 db.query("SELECT matchMode FROM ng_word").use { cursor ->
                     assertTrue(cursor.moveToFirst())
                     assertEquals("PARTIAL", cursor.getString(0))
+                }
+                db.query("SELECT COUNT(*) FROM learned_next_words").use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
                 }
             } finally {
                 migrated.close()

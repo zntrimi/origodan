@@ -26,7 +26,7 @@ class FloatingCandidateListAdapter(
     private val pageSize: Int,
 ) : ListAdapter<CandidateItem, RecyclerView.ViewHolder>(DiffCallback()) {
     private val formulaParser = FormulaParser()
-    private var candidateTextSizeSp: Float = 14f
+    private var candidateTextSizeSp: Float = 17f
     private var candidateTextColor: Int? = null
 
     // --- Public Callbacks ---

@@ -2,6 +2,12 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_ENGLISH_TYPO_CANDIDATE_TYPE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_ENGLISH_LATINIME_AUTOCORRECT_CANDIDATE_TYPE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_ENGLISH_LATINIME_INTENTIONAL_OMISSION_CANDIDATE_TYPE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_ENGLISH_LATINIME_EXACT_CANDIDATE_TYPE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_ENGLISH_LATINIME_EXACT_OMISSION_CANDIDATE_TYPE
+import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishTypoScorer
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
@@ -27,8 +33,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import dev.imaizentarou.latinime.LatinImeEngine
+import dev.imaizentarou.latinime.LatinImeKey
+import dev.imaizentarou.latinime.LatinImeKeyboardGeometry
+import dev.imaizentarou.latinime.LatinImeTap
+import com.kazumaproject.qwerty_keyboard.glide.QwertyTapSample
 
-class EnglishEngine : QwertyGlideCandidateProvider {
+class EnglishEngine(
+    private val latinImeEngine: LatinImeEngine? = null,
+) : QwertyGlideCandidateProvider {
     private lateinit var readingLOUDS: LOUDSWithTermId
     private lateinit var wordLOUDS: LOUDS
     private lateinit var tokenArray: TokenArray
@@ -52,6 +65,15 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     private var qwertyGlideInputEnabled: Boolean = false
     private val qwertyGlideCandidateCaseExpander = QwertyGlideCandidateCaseExpander()
     private val qwertyGlideWarmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    @Volatile
+    private var latinImeInputSnapshot: LatinImeInputSnapshot? = null
+
+    private data class LatinImeInputSnapshot(
+        val input: String,
+        val previousWord: String?,
+        val taps: List<LatinImeTap>,
+        val geometry: LatinImeKeyboardGeometry,
+    )
 
     companion object {
         const val LENGTH_MULTIPLY = 2000
@@ -485,6 +507,22 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction = true,
     )
 
+    fun isKnownWord(input: String): Boolean {
+        if (input.isEmpty() || !input.all(Char::isLetter)) return false
+        runCatching { latinImeEngine?.isKnownWord(input) }
+            .getOrNull()
+            ?.let { if (it) return true }
+        ensureDictionariesLoaded()
+        val nodeIndex = readingLOUDS.getNodeIndex(
+            input.lowercase(),
+            succinctBitVector = succinctBitVectorLBSReading,
+        )
+        return nodeIndex > 0 && readingLOUDS.getTermId(
+            nodeIndex,
+            succinctBitVector = succinctBitVectorReadingIsLeaf,
+        ) >= 0
+    }
+
     fun getCandidates(
         input: String,
         enableTypoCorrection: Boolean,
@@ -497,6 +535,12 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val lowerInput = input.lowercase()
         val limit = if (input.length <= 2) 6 else 12
 
+        val latinImeCandidates = if (enableTypoCorrection) {
+            getLatinImeCandidates(input = input, defaultType = defaultType)
+        } else {
+            emptyList()
+        }
+
         val predictiveSearchReading = if (enablePrediction) {
             readingLOUDS.predictiveSearch(
                 prefix = lowerInput,
@@ -507,12 +551,13 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             emptyList()
         }
 
-        // ★ typo はフラグが true のときだけ
+        // Search the dictionary trie with one bounded edit. This catches adjacent swaps,
+        // missing/extra letters and substitutions without scanning every dictionary word.
         val typoCorrection = if (enableTypoCorrection && input.length > 2) {
-            readingLOUDS.commonPrefixSearchWithOmission(
-                str = lowerInput,
+            readingLOUDS.fuzzySearch(
+                input = lowerInput,
                 succinctBitVector = succinctBitVectorLBSReading
-            ).filter { it.yomi.length == lowerInput.length }
+            )
         } else {
             emptyList()
         }
@@ -631,10 +676,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         // 2) typo（補正） - enableTypoCorrection のときだけ
         // ============
         if (enableTypoCorrection && typoCorrection.isNotEmpty()) {
-            val typoType = 35.toByte()
             val predictiveSet = predictiveSearchReading.toHashSet()
-
-            val maxEdits = maxEditsByLength(lowerInput.length)
 
             for (typo in typoCorrection) {
                 val readingStr = typo.yomi
@@ -655,8 +697,6 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 val listToken =
                     tokenArray.getListDictionaryByYomiTermId(termId, succinctBitVectorTokenArray)
 
-                val penalty = if (typo.omissionOccurred) 9000 else 8000
-
                 val variants = listToken.flatMap { entry ->
                     val base = when (entry.nodeId) {
                         -1 -> readingStr
@@ -666,30 +706,47 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                         )
                     }
 
-                    // ★ここで「input と似ているものだけ」に絞る（typo由来のみ）
                     val baseLower = base.lowercase()
-                    if (!withinEditDistance(baseLower, lowerInput, maxEdits)) {
+                    if (EnglishTypoScorer.editDistance(baseLower, lowerInput) != 1) {
                         return@flatMap emptyList<Candidate>()
+                    }
+                    val penalty = 2_000 + EnglishTypoScorer.rankingPenalty(lowerInput, baseLower)
+                    val inputIsAllCaps = input.length > 1 && input.all(Char::isUpperCase)
+                    val inputIsCapitalized = input.first().isUpperCase()
+                    val lowerCasePenalty = when {
+                        inputIsAllCaps -> 3_000
+                        inputIsCapitalized -> 1_500
+                        else -> 0
+                    }
+                    val capitalizedPenalty = when {
+                        inputIsAllCaps -> 2_000
+                        inputIsCapitalized -> 0
+                        else -> 500 + base.length * LENGTH_MULTIPLY
+                    }
+                    val upperCasePenalty = if (inputIsAllCaps) {
+                        0
+                    } else {
+                        2_000 + base.length * LENGTH_MULTIPLY
                     }
 
                     listOf(
                         Candidate(
                             base,
-                            typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + penalty
+                            QWERTY_ENGLISH_TYPO_CANDIDATE_TYPE,
+                            input.length.toUByte(),
+                            entry.wordCost.toInt() + penalty + lowerCasePenalty
                         ),
                         Candidate(
                             base.replaceFirstChar { it.uppercaseChar() },
-                            typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY + penalty
+                            QWERTY_ENGLISH_TYPO_CANDIDATE_TYPE,
+                            input.length.toUByte(),
+                            entry.wordCost.toInt() + penalty + capitalizedPenalty
                         ),
                         Candidate(
                             base.uppercase(),
-                            typoType,
-                            base.length.toUByte(),
-                            entry.wordCost.toInt() + 2000 + base.length * LENGTH_MULTIPLY + penalty
+                            QWERTY_ENGLISH_TYPO_CANDIDATE_TYPE,
+                            input.length.toUByte(),
+                            entry.wordCost.toInt() + penalty + upperCasePenalty
                         )
                     )
                 }
@@ -699,42 +756,134 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         }
 
         // 同一文字列は最小スコアのみ残す
-        val deduped = predictions
+        val deduped = (latinImeCandidates + predictions)
             .groupBy { it.string }
-            .map { (_, list) -> list.minBy { it.score } }
+            .map { (_, list) ->
+                val bestScore = list.minOf(Candidate::score)
+                val latinImeMetadata = list.firstOrNull {
+                    it.type == QWERTY_ENGLISH_LATINIME_AUTOCORRECT_CANDIDATE_TYPE ||
+                        it.type == QWERTY_ENGLISH_LATINIME_INTENTIONAL_OMISSION_CANDIDATE_TYPE ||
+                        it.type == QWERTY_ENGLISH_LATINIME_EXACT_CANDIDATE_TYPE ||
+                        it.type == QWERTY_ENGLISH_LATINIME_EXACT_OMISSION_CANDIDATE_TYPE
+                }
+                latinImeMetadata?.copy(score = bestScore) ?: list.minBy(Candidate::score)
+            }
 
         return deduped.sortedBy { it.score }
     }
 
-    private fun withinEditDistance(a: String, b: String, maxEdits: Int): Boolean {
-        val la = a.length
-        val lb = b.length
-        if (kotlin.math.abs(la - lb) > maxEdits) return false
-        if (maxEdits == 0) return a == b
-        if (a == b) return true
-
-        // DP 1行で、maxEdits 超えたら早期終了
-        var prev = IntArray(lb + 1) { it }
-        var curr = IntArray(lb + 1)
-
-        for (i in 1..la) {
-            curr[0] = i
-            var rowMin = curr[0]
-            val ca = a[i - 1]
-            for (j in 1..lb) {
-                val cost = if (ca == b[j - 1]) 0 else 1
-                val v = minOf(
-                    prev[j] + 1,        // delete
-                    curr[j - 1] + 1,    // insert
-                    prev[j - 1] + cost  // replace
-                )
-                curr[j] = v
-                if (v < rowMin) rowMin = v
-            }
-            if (rowMin > maxEdits) return false
-            val tmp = prev; prev = curr; curr = tmp
+    /** Records the real touch geometry for the next LatinIME lookup. */
+    fun recordLatinImeTap(
+        input: String,
+        previousText: String,
+        tap: QwertyTapSample?,
+        proximityInfo: QwertyKeyboardProximityInfo,
+    ) {
+        if (input.isEmpty() || proximityInfo.keys.isEmpty()) {
+            latinImeInputSnapshot = null
+            return
         }
-        return prev[lb] <= maxEdits
+        val geometry = LatinImeKeyboardGeometry(
+            width = proximityInfo.keyboardWidth,
+            height = proximityInfo.keyboardHeight,
+            keys = proximityInfo.keys.map { key ->
+                LatinImeKey(
+                    codePoint = key.char.code,
+                    x = (key.centerX - key.width / 2f).toInt(),
+                    y = (key.centerY - key.height / 2f).toInt(),
+                    width = key.width.toInt().coerceAtLeast(1),
+                    height = key.height.toInt().coerceAtLeast(1),
+                )
+            },
+        )
+        val old = latinImeInputSnapshot
+        val taps = if (
+            tap != null && old != null &&
+            input.length == old.input.length + 1 &&
+            input.dropLast(1).equals(old.input, ignoreCase = true) &&
+            old.geometry == geometry
+        ) {
+            old.taps + tap.toLatinImeTap(old.taps.size)
+        } else if (tap != null && input.length == 1) {
+            listOf(tap.toLatinImeTap(0))
+        } else {
+            emptyList()
+        }
+        latinImeInputSnapshot = LatinImeInputSnapshot(
+            input = input,
+            previousWord = previousText.extractLastEnglishWord(),
+            taps = taps,
+            geometry = geometry,
+        )
+    }
+
+    fun clearLatinImeInputSnapshot() {
+        latinImeInputSnapshot = null
+    }
+
+    private fun getLatinImeCandidates(input: String, defaultType: Byte): List<Candidate> {
+        val engine = latinImeEngine ?: return emptyList()
+        val snapshot = latinImeInputSnapshot?.takeIf { it.input.equals(input, ignoreCase = true) }
+        val nativeSuggestions = runCatching {
+            engine.suggest(
+                typed = input,
+                previousWord = snapshot?.previousWord,
+                taps = snapshot?.taps.orEmpty(),
+                geometry = snapshot?.geometry,
+            )
+        }.onFailure { error ->
+            Timber.w(error, "AOSP LatinIME suggestion failed; using LOUDS fallback")
+        }.getOrDefault(emptyList())
+
+        return nativeSuggestions
+            .sortedByDescending { it.score }
+            .mapIndexedNotNull { rank, suggestion ->
+                val rawWord = suggestion.word
+                if (rawWord.isEmpty()) return@mapIndexedNotNull null
+                val word = rawWord.matchCaseOf(input)
+                val isExact = word.equals(input, ignoreCase = true)
+                val isCompletion = word.lowercase().startsWith(input.lowercase())
+                Candidate(
+                    string = word,
+                    type = when {
+                        isExact && suggestion.isExactMatchWithIntentionalOmission ->
+                            QWERTY_ENGLISH_LATINIME_EXACT_OMISSION_CANDIDATE_TYPE
+                        isExact -> QWERTY_ENGLISH_LATINIME_EXACT_CANDIDATE_TYPE
+                        isCompletion -> defaultType
+                        suggestion.isExactMatchWithIntentionalOmission ->
+                            QWERTY_ENGLISH_LATINIME_INTENTIONAL_OMISSION_CANDIDATE_TYPE
+                        suggestion.isAppropriateForAutoCorrection ->
+                            QWERTY_ENGLISH_LATINIME_AUTOCORRECT_CANDIDATE_TYPE
+                        else -> QWERTY_ENGLISH_TYPO_CANDIDATE_TYPE
+                    },
+                    length = input.length.toUByte(),
+                    score = when {
+                        isExact -> 350
+                        else -> 700 + rank * 220
+                    },
+                )
+            }
+    }
+
+    private fun QwertyTapSample.toLatinImeTap(index: Int): LatinImeTap {
+        return LatinImeTap(
+            x = x,
+            y = y,
+            // Typing only needs monotonic relative timing; wall/uptime values must not overflow.
+            timeMillis = index * 60,
+        )
+    }
+
+    private fun String.extractLastEnglishWord(): String? =
+        Regex("[A-Za-z']+").findAll(this).lastOrNull()?.value
+
+    private fun String.matchCaseOf(input: String): String = when {
+        input.length > 1 && input.all(Char::isUpperCase) -> uppercase()
+        input.firstOrNull()?.isUpperCase() == true -> replaceFirstChar(Char::uppercaseChar)
+        else -> lowercase().let { word ->
+            // First-person contractions keep a capital I even when typed without punctuation.
+            if (word.startsWith("i'")) "I${word.drop(1)}" else word
+        }
     }
 
     private fun ensureDictionariesLoaded() {
@@ -784,13 +933,6 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val succinctBitVectorReadingIsLeaf: SuccinctBitVector,
         val succinctBitVectorTokenArray: SuccinctBitVector,
     )
-
-    private fun maxEditsByLength(len: Int): Int = when {
-        len <= 3 -> 1
-        len <= 6 -> 1
-        len <= 10 -> 2
-        else -> 3
-    }
 
 }
 

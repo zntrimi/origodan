@@ -17,6 +17,7 @@ class ShortcutRepository @Inject constructor(
     private val fallbackShortcuts = listOf(ShortcutType.SETTINGS)
 
     val defaultShortcuts = listOf(
+        ShortcutType.VOICE_INPUT,
         ShortcutType.SETTINGS,
         ShortcutType.EMOJI,
         ShortcutType.TEMPLATE,
@@ -73,6 +74,18 @@ class ShortcutRepository @Inject constructor(
             val currentItems = shortcutDao.getAllShortcuts()
             if (currentItems.isEmpty()) {
                 updateShortcuts(defaultShortcuts)
+            }
+        }
+    }
+
+    /** Adds a newly introduced high-priority shortcut without disturbing the user's order. */
+    suspend fun prependShortcutIfMissing(type: ShortcutType) {
+        withContext(Dispatchers.IO) {
+            val current = shortcutDao.getAllShortcuts()
+                .mapNotNull { ShortcutType.fromId(it.typeId) }
+                .distinct()
+            if (type !in current) {
+                updateShortcuts(listOf(type) + current)
             }
         }
     }

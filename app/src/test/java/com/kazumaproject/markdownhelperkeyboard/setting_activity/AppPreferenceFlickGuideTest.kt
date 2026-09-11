@@ -91,8 +91,8 @@ class AppPreferenceFlickGuideTest {
     }
 
     @Test
-    fun zeroQuerySuggestionPreference_defaultOff() {
-        assertFalse(AppPreference.zero_query_suggestion_preference)
+    fun zeroQuerySuggestionPreference_defaultOn() {
+        assertTrue(AppPreference.zero_query_suggestion_preference)
     }
 
     @Test

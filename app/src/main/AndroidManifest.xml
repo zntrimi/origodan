@@ -12,6 +12,9 @@
         <intent>
             <action android:name="android.view.InputMethod" />
         </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <application
@@ -42,6 +45,12 @@
 
         <activity
             android:name=".gemma.media.GemmaImagePickerActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />
+
+        <activity
+            android:name=".ime_service.voice.VoiceInputPermissionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />

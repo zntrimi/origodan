@@ -669,7 +669,7 @@ private fun configureFlickKeyboardPreview(
         keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 160,
         keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 160,
         iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 80,
-        textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
+        textSizeSp = appPreference.flick_key_text_size_sp ?: 20.0f,
         specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
     )
     flickView.applyPopupViewStyleSet(
