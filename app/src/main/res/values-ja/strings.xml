@@ -1816,7 +1816,7 @@
     <string name="emoji_search_done">完了</string>
     <string name="emoji_search_switch_english">英語入力に切り替え</string>
     <string name="emoji_search_switch_japanese">日本語のローマ字入力に切り替え</string>
-    <string name="emoji_search_hint_japanese">ローマ字で検索（例：inu → いぬ）</string>
+    <string name="emoji_search_hint_japanese">GODANで検索（例：いぬ）</string>
     <string name="emoji_search_hint_english">英語で検索（例：smile, heart）</string>
     <string name="emoji_search_query_label">絵文字の検索語：%1$s</string>
     <string name="emoji_search_loading">検索中…</string>

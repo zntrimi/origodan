@@ -808,7 +808,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
     private var emojiSearchActive: Boolean = false
     private var emojiSearchQuery: String = ""
+    private var emojiSearchCursor = 0
+    private var emojiSearchOriginalCustomMode = KeyboardInputMode.HIRAGANA
     private var emojiSearchJapanese = true
+    private var emojiSearchVisibleResults: List<String> = emptyList()
     private var emojiSearchIndex: EmojiSearchIndex? = null
     private val emojiSearchConsumedKeyUps = mutableSetOf<Int>()
     private var splitClipboardHistoryNeedsScrollReset = true
@@ -6935,6 +6938,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
                 }
                 KeyEvent.KEYCODE_DEL -> deleteEmojiSearchText()
+                KeyEvent.KEYCODE_DPAD_LEFT -> moveEmojiSearchCursor(-1)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> moveEmojiSearchCursor(1)
                 else -> if (!event.isCtrlPressed && !event.isMetaPressed && event.unicodeChar > 0) {
                     appendEmojiSearchText(String(Character.toChars(event.unicodeChar)))
                 }
@@ -8562,6 +8567,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun renderCurrentKeyboardSurface() {
+        if (emojiSearchActive) { renderEmojiSearchTypingSurface(); return }
         val surface = getActiveKeyboardSurface() ?: return
         renderKeyboardMode(
             surface = surface,
@@ -8977,6 +8983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun calculateQwertyGlideInputMode(): Boolean {
+        if (emojiSearchActive) return false
         if (isQwertyEnglishDirectInputForced()) return false
         val surface = getActiveKeyboardSurface()
         return QwertyGlideInputModeResolver.resolve(
@@ -8999,6 +9006,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun renderCurrentKeyboardStateOnActiveSurface() {
+        if (emojiSearchActive) { renderEmojiSearchSurface(); return }
         renderCurrentKeyboardSurface()
         setInputModeOnActiveSurface(currentInputModeForSession)
         renderDynamicKeysOnActiveSurface()
@@ -13010,6 +13018,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionLongPress(action: KeyAction) {
+                if (emojiSearchActive) {
+                    if (action == KeyAction.Delete || action == KeyAction.Backspace) deleteEmojiSearchText()
+                    return
+                }
                 if (isKeyboardLayoutEditModeActive()) return
                 finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) {
@@ -13243,6 +13255,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
+                if (emojiSearchActive) { stopDeleteLongPress(); return }
                 if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
@@ -13476,6 +13489,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                if (handleEmojiSearchKeyboardAction(action)) return
                 if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
@@ -13787,6 +13801,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
+                if (handleEmojiSearchKeyboardAction(action)) return
                 if (isKeyboardLayoutEditModeActive()) return
                 finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
@@ -14657,13 +14672,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleMirrorGodanText(text: String, isFlick: Boolean) {
         if (text.isEmpty()) return
-        if (emojiSearchActive) {
-            emojiSearchQuery = mirrorGodanInputComposer.append(emojiSearchQuery, text) { source ->
-                romajiConverter?.convertCustomLayout(source) ?: source
-            }
-            updateEmojiSearchCandidates()
-            return
-        }
+        if (emojiSearchActive) { appendEmojiSearchText(text); return }
         if (dispatchDirectTextIfNeeded(text)) return
         if (applyPendingFlickTextMutation(text, isFlick)) return
 
@@ -17891,6 +17900,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
+        val usesQwertyLayout = if (emojiSearchActive) !emojiSearchJapanese else
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
         val forceFullLayout = !addCandidateTabHeight && (
             lastKeyboardLayoutRootView !== mainView.root ||
@@ -17903,7 +17914,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 2. ピクセル値の計算
         val heightPx = when {
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+            emojiSearchActive -> ((if (emojiSearchJapanese) prefs.heightPref else prefs.qwertyHeightPref)
+                .coerceIn(100, 420) * density).toInt()
+            usesQwertyLayout -> {
                 val clampedHeight = if (isPortrait) {
                     prefs.qwertyHeightPref.coerceIn(100, 420)
                 } else if (isFloating) {
@@ -17927,9 +17940,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.let { requestedHeight ->
             // Browsing needs room for the M3 controls and several rows of results.
             // Restore the saved key height automatically when the panel closes.
-            if (emojiSearchActive && !isFloating) {
-                emojiSearchHeightPx()
-            } else if (isSymbol && !isFloating) {
+            if (isSymbol && !isFloating) {
                 val browseHeightDp = minOf(344f, resources.configuration.screenHeightDp * 0.55f)
                 requestedHeight.coerceAtLeast((browseHeightDp * density).toInt())
             } else {
@@ -17977,7 +17988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
         val finalKeyboardHeight = when {
-            emojiSearchActive -> heightPx
+            emojiSearchActive -> heightPx + emojiSearchHeightPx()
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
@@ -17989,35 +18000,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
 
         val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+            if (usesQwertyLayout) {
                 qwertyWidthPx
             } else {
                 widthPx
             }
 
         val finalStartMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+            if (usesQwertyLayout) {
                 dpToPx(prefs.qwertyMarginStart)
             } else {
                 dpToPx(prefs.keyboardMarginStart)
             }
 
         val finalEndMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+            if (usesQwertyLayout) {
                 dpToPx(prefs.qwertyMarginEnd)
             } else {
                 dpToPx(prefs.keyboardMarginEnd)
             }
 
         val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+            if (usesQwertyLayout) {
                 prefs.qwertyBottomMargin
             } else {
                 prefs.bottomMargin
             }
 
         val positionIsEnd =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+            if (usesQwertyLayout) {
                 prefs.qwertyPositionIsEnd
             } else {
                 prefs.positionIsEnd
@@ -21972,75 +21983,168 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         emojiSearchActive = true
         emojiSearchJapanese = currentInputModeForSession != InputMode.ModeEnglish
         emojiSearchQuery = ""
+        emojiSearchCursor = 0
+        emojiSearchOriginalCustomMode = customKeyboardMode
         activeEmojiSearchView()?.apply {
-            setJapanese(emojiSearchJapanese)
-            onText = ::appendEmojiSearchText
-            onDelete = ::deleteEmojiSearchText
-            onClear = { emojiSearchQuery = ""; updateEmojiSearchCandidates() }
-            onClose = { vibrate(); finishEmojiSearch() }
-            onDone = {
-                vibrate()
-                finishEmojiSearch()
-                _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
-            }
-            onLanguageChanged = { japanese ->
-                emojiSearchJapanese = japanese
-                updateEmojiSearchCandidates()
-            }
+            onClear = { emojiSearchQuery = ""; emojiSearchCursor = 0; updateEmojiSearchCandidates() }
+            onClose = { closeEmojiSearchToBrowser() }
+            onLanguageChanged = ::switchEmojiSearchLanguage
             onEmoji = ::insertEmojiSearchResult
         }
+        _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
+        configureEmojiSearchTypingSurface()
         renderEmojiSearchSurface()
         updateEmojiSearchCandidates()
     }
 
-    private fun emojiSearchHeightPx() = applicationContext.dpToPx(
-        (resources.configuration.screenHeightDp * 0.7f).toInt().coerceIn(320, 432)
-    )
+    private fun emojiSearchHeightPx() = applicationContext.dpToPx(208)
+
+    private fun configureEmojiSearchTypingSurface() {
+        customKeyboardMode = if (emojiSearchJapanese) KeyboardInputMode.HIRAGANA else KeyboardInputMode.ENGLISH
+        val surface = getActiveKeyboardSurface() ?: return
+        if (emojiSearchJapanese) surface.customLayout?.let(::setSumireLayoutTo)
+        else surface.qwertyView?.resetQWERTYKeyboard(editorEnterLabel(japanese = false))
+        activeEmojiSearchView()?.setJapanese(emojiSearchJapanese)
+    }
+
+    private fun switchEmojiSearchLanguage(japanese: Boolean) {
+        // Finish dispatching the old key's release before changing its surface.
+        mainLayoutBinding?.root?.post {
+            if (!emojiSearchActive) return@post
+            stopAllOngoingKeyLongPresses()
+            emojiSearchJapanese = japanese
+            configureEmojiSearchTypingSurface()
+            renderEmojiSearchSurface()
+            updateEmojiSearchCandidates()
+        }
+    }
+
+    private fun renderEmojiSearchTypingSurface() {
+        val surface = getActiveKeyboardSurface() ?: return
+        val target = if (emojiSearchJapanese) surface.customLayout else surface.qwertyView
+        if (target?.isVisible != true) hideKeyboardViews(surface)
+        if (emojiSearchJapanese) surface.customLayout?.isVisible = true
+        else surface.qwertyView?.isVisible = true
+    }
 
     private fun renderEmojiSearchSurface() {
         if (!emojiSearchActive) return
         val panel = activeEmojiSearchView() ?: return
-        val height = emojiSearchHeightPx()
-        if (panel.layoutParams.height != height) {
-            panel.layoutParams = panel.layoutParams.apply { this.height = height }
-        }
+        renderEmojiSearchTypingSurface()
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.apply {
                 suggestionViewParent.isVisible = false
                 floatingSymbolKeyboard.isVisible = false
+                // The panel is constrained above the unchanged keyboard container.
             }
-            getFloatingKeyboardSurface()?.let(::hideKeyboardViews)
         } else {
-            mainLayoutBinding?.let { updateKeyboardLayout(it, isSymbolOverride = true) }
-            mainLayoutBinding?.apply {
-                suggestionViewParent.isVisible = false
-                candidateTabLayout.isVisible = false
-                shortcutToolbarRecyclerview.isVisible = false
-                keyboardSymbolView.isVisible = false
-                splitClipboardHistory.isVisible = false
-                candidatesRowView.isVisible = false
-                shortcutPanelContainer.isVisible = false
+            mainLayoutBinding?.let { binding ->
+                updateKeyboardLayout(binding, isSymbolOverride = false)
+                val bodyHeight = if (emojiSearchJapanese) binding.customLayoutDefault.layoutParams.height
+                    else binding.qwertyView.layoutParams.height
+                val params = panel.layoutParams as FrameLayout.LayoutParams
+                if (params.bottomMargin != bodyHeight || params.height != emojiSearchHeightPx()) {
+                    params.bottomMargin = bodyHeight
+                    params.height = emojiSearchHeightPx()
+                    panel.layoutParams = params
+                }
+                binding.suggestionViewParent.isVisible = false
+                binding.candidateTabLayout.isVisible = false
+                binding.shortcutToolbarRecyclerview.isVisible = false
+                binding.keyboardSymbolView.isVisible = false
+                binding.splitClipboardHistory.isVisible = false
+                binding.candidatesRowView.isVisible = false
+                binding.shortcutPanelContainer.isVisible = false
             }
-            getNormalKeyboardSurface()?.let(::hideKeyboardViews)
         }
         panel.isVisible = true
         panel.bringToFront()
     }
 
+    private fun closeEmojiSearchToBrowser() {
+        vibrate()
+        finishEmojiSearch()
+        _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = true)
+    }
+
+    private fun handleEmojiSearchKeyboardAction(action: KeyAction): Boolean {
+        if (!emojiSearchActive) return false
+        when (action) {
+            is KeyAction.Text -> appendEmojiSearchText(action.text)
+            is KeyAction.InputText -> if (action.text == "ひらがな小文字") editEmojiSearchPreviousCharacter()
+                else appendEmojiSearchText(action.text)
+            KeyAction.Delete, KeyAction.Backspace -> deleteEmojiSearchText()
+            KeyAction.Space, KeyAction.ForceHalfWidthSpace, KeyAction.ForceFullWidthSpace -> appendEmojiSearchText(" ")
+            KeyAction.Enter, KeyAction.Confirm, KeyAction.NewLine -> finishEmojiSearch()
+            KeyAction.ChangeInputMode, KeyAction.SwitchRomajiEnglish -> switchEmojiSearchLanguage(!emojiSearchJapanese)
+            KeyAction.SwitchToEnglishLayout -> switchEmojiSearchLanguage(false)
+            KeyAction.SwitchToKanaLayout -> switchEmojiSearchLanguage(true)
+            KeyAction.SwitchToNumberLayout -> {
+                customKeyboardMode = KeyboardInputMode.SYMBOLS
+                getActiveKeyboardSurface()?.customLayout?.let(::setSumireLayoutTo)
+            }
+            KeyAction.MoveCursorLeft -> moveEmojiSearchCursor(-1)
+            KeyAction.MoveCursorRight -> moveEmojiSearchCursor(1)
+            KeyAction.ShowEmojiKeyboard -> closeEmojiSearchToBrowser()
+            KeyAction.SwitchToNextIme -> { finishEmojiSearch(); return false }
+            else -> Unit
+        }
+        return true
+    }
+
+    private fun handleEmojiSearchQwertyKey(key: QWERTYKey, text: Char?): Boolean {
+        if (!emojiSearchActive) return false
+        when (key) {
+            QWERTYKey.QWERTYKeyDelete -> deleteEmojiSearchText()
+            QWERTYKey.QWERTYKeySpace -> appendEmojiSearchText(" ")
+            QWERTYKey.QWERTYKeyReturn -> finishEmojiSearch()
+            QWERTYKey.QWERTYKeyEmoji -> closeEmojiSearchToBrowser()
+            QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchMode -> switchEmojiSearchLanguage(true)
+            QWERTYKey.QWERTYKeyCursorLeft -> moveEmojiSearchCursor(-1)
+            QWERTYKey.QWERTYKeyCursorRight -> moveEmojiSearchCursor(1)
+            QWERTYKey.QWERTYKeySwitchDefaultLayout -> { finishEmojiSearch(); return false }
+            else -> text?.let { appendEmojiSearchText(it.toString()) }
+        }
+        return true
+    }
+
     private fun appendEmojiSearchText(text: String) {
         if (!emojiSearchActive || text.isEmpty()) return
-        emojiSearchQuery = if (emojiSearchJapanese) {
-            mirrorGodanInputComposer.append(emojiSearchQuery, text) { source ->
+        val prefix = emojiSearchQuery.substring(0, emojiSearchCursor)
+        val suffix = emojiSearchQuery.substring(emojiSearchCursor)
+        val edited = if (emojiSearchJapanese) {
+            mirrorGodanInputComposer.append(prefix, text) { source ->
                 romajiConverter?.convertCustomLayout(source) ?: source
             }
-        } else emojiSearchQuery + text
+        } else prefix + text
+        emojiSearchQuery = edited + suffix
+        emojiSearchCursor = edited.length
         updateEmojiSearchCandidates()
     }
 
     private fun deleteEmojiSearchText() {
-        if (!emojiSearchActive || emojiSearchQuery.isEmpty()) return
-        val end = emojiSearchQuery.offsetByCodePoints(emojiSearchQuery.length, -1)
-        emojiSearchQuery = emojiSearchQuery.substring(0, end)
+        if (!emojiSearchActive || emojiSearchCursor == 0) return
+        val start = emojiSearchQuery.offsetByCodePoints(emojiSearchCursor, -1)
+        emojiSearchQuery = emojiSearchQuery.removeRange(start, emojiSearchCursor)
+        emojiSearchCursor = start
+        updateEmojiSearchCandidates()
+    }
+
+    private fun moveEmojiSearchCursor(direction: Int) {
+        if (!emojiSearchActive) return
+        if (direction < 0 && emojiSearchCursor > 0 ||
+            direction > 0 && emojiSearchCursor < emojiSearchQuery.length
+        ) emojiSearchCursor = emojiSearchQuery.offsetByCodePoints(emojiSearchCursor, direction)
+        activeEmojiSearchView()?.showResults(emojiSearchQuery, emojiSearchVisibleResults, cursor = emojiSearchCursor)
+    }
+
+    private fun editEmojiSearchPreviousCharacter() {
+        if (!emojiSearchActive || emojiSearchCursor == 0) return
+        val previous = emojiSearchQuery[emojiSearchCursor - 1]
+        val replacement = if (emojiSearchJapanese) previous.getDakutenFlickTop()
+        else if (previous.isUpperCase()) previous.lowercaseChar() else previous.uppercaseChar()
+        if (replacement == null) return
+        emojiSearchQuery = emojiSearchQuery.replaceRange(emojiSearchCursor - 1, emojiSearchCursor, replacement.toString())
         updateEmojiSearchCandidates()
     }
 
@@ -22048,7 +22152,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!emojiSearchActive) return
         emojiSearchJob?.cancel()
         val query = emojiSearchQuery
-        activeEmojiSearchView()?.showResults(query, emptyList(), loading = true)
+        emojiSearchVisibleResults = emptyList()
+        activeEmojiSearchView()?.showResults(query, emptyList(), loading = true, cursor = emojiSearchCursor)
         emojiSearchJob = scope.launch {
             val results = withContext(kanaKanjiConversionDispatcher) {
                 val index = emojiSearchIndex ?: assets.open("emoji_search/keywords.tsv")
@@ -22065,7 +22170,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     .take(96)
             }
             if (!emojiSearchActive || emojiSearchQuery != query) return@launch
-            activeEmojiSearchView()?.showResults(query, results)
+            emojiSearchVisibleResults = results
+            activeEmojiSearchView()?.showResults(query, results, cursor = emojiSearchCursor)
             renderEmojiSearchSurface()
         }
     }
@@ -22076,6 +22182,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         emojiSearchJob = null
         emojiSearchActive = false
         emojiSearchQuery = ""
+        emojiSearchCursor = 0
+        emojiSearchVisibleResults = emptyList()
+        customKeyboardMode = emojiSearchOriginalCustomMode
         mainLayoutBinding?.emojiSearchKeyboard?.isVisible = false
         floatingKeyboardBinding?.emojiSearchKeyboard?.isVisible = false
         if (isKeyboardFloatingMode != true) mainLayoutBinding?.let { updateKeyboardLayout(it) }
@@ -22084,6 +22193,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardBinding?.floatingSymbolKeyboard?.isVisible = true
             } else mainLayoutBinding?.keyboardSymbolView?.isVisible = true
         }
+        if (!keyboardSymbolViewState.value.isShown) renderCurrentKeyboardStateOnActiveSurface()
         if (clearCandidates) {
             currentCandidateStripCandidates = emptyList()
             currentCandidateStripFullCandidates = emptyList()
@@ -22394,6 +22504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (handleEmojiSearchQwertyKey(qwertyKey, tap)) return
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     handleKeyReleaseFeedback()
@@ -22736,6 +22847,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (emojiSearchActive) {
+                        if (qwertyKey == QWERTYKey.QWERTYKeyDelete) deleteEmojiSearchText()
+                        return
+                    }
                     if (isKeyboardLayoutEditModeActive()) return
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
@@ -22818,6 +22933,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onFlickUPQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (handleEmojiSearchQwertyKey(qwertyKey, variations?.firstOrNull() ?: tap)) return
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
                     handleKeyReleaseFeedback()

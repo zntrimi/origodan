@@ -304,7 +304,7 @@
     <com.kazumaproject.markdownhelperkeyboard.emoji_search.EmojiSearchKeyboardView
         android:id="@+id/emoji_search_keyboard"
         android:layout_width="match_parent"
-        android:layout_height="432dp"
+        android:layout_height="208dp"
         android:layout_gravity="bottom"
         android:visibility="gone" />
 </com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout>

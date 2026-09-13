@@ -3,6 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.ui
 import android.content.Context
 import android.view.ContextThemeWrapper
 import android.view.View
+import android.view.LayoutInflater
+import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
@@ -59,11 +62,17 @@ class EmojiSearchTest {
             View.MeasureSpec.makeMeasureSpec((height * density).toInt(), View.MeasureSpec.EXACTLY)
         )
         panel.layout(0, 0, panel.measuredWidth, panel.measuredHeight)
+        // A width change rebuilds GODAN into its mirrored placement.
+        panel.measure(
+            View.MeasureSpec.makeMeasureSpec((width * density).toInt(), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec((height * density).toInt(), View.MeasureSpec.EXACTLY)
+        )
+        panel.layout(0, 0, panel.measuredWidth, panel.measuredHeight)
         return panel
     }
 
     @Test @Config(qualifiers = "port") fun repeatedEmojiSelectionKeepsQueryAndResults() {
-        val panel = panel(360, 432)
+        val panel = panel(360, 208)
         val committed = mutableListOf<String>()
         panel.onEmoji = { committed.add(it) }
         panel.showResults("smile", listOf("😀", "😃"))
@@ -82,26 +91,35 @@ class EmojiSearchTest {
         assertTrue(grid.height / panel.resources.displayMetrics.density >= 112f)
     }
 
-    @Test @Config(qualifiers = "sw600dp-land") fun unfoldedLayoutAllowsEnglishTypingAndClear() {
-        val panel = panel(840, 432)
-        var language: Boolean? = null
-        val text = StringBuilder()
-        var cleared = false
-        panel.onLanguageChanged = { language = it }
-        panel.onText = { text.append(it) }
-        panel.onClear = { cleared = true }
+    @Test @Config(qualifiers = "sw600dp-land") fun switchingSearchLanguagePreservesQueryAndResults() {
+        val panel = panel(840, 208)
+        panel.showResults("いぬ", listOf("🐶", "🐕"))
+        panel.onLanguageChanged = { language -> panel.setJapanese(language) }
         panel.findViewById<View>(R.id.emoji_search_language).performClick()
-        assertEquals(false, language)
-        for (letter in "smile") panel.findViewWithTag<View>("emoji-search-key-$letter").performClick()
-        assertEquals("smile", text.toString())
-        panel.showResults(text.toString(), listOf("😀"))
-        panel.findViewById<View>(R.id.emoji_search_clear).performClick()
-        assertTrue(cleared)
+        assertEquals("あ", panel.findViewById<TextView>(R.id.emoji_search_language).text.toString())
+        assertEquals("いぬ", panel.findViewById<TextView>(R.id.emoji_search_query).text.toString())
+        assertEquals(2, panel.findViewById<RecyclerView>(R.id.emoji_search_results).adapter!!.itemCount)
+        panel.findViewById<View>(R.id.emoji_search_language).performClick()
+        assertEquals("ABC", panel.findViewById<TextView>(R.id.emoji_search_language).text.toString())
+        assertEquals("いぬ", panel.findViewById<TextView>(R.id.emoji_search_query).text.toString())
         assertFalse(panel.hasFocus())
-        for (id in listOf(R.id.emoji_search_close, R.id.emoji_search_clear, R.id.emoji_search_language,
-            R.id.emoji_search_done, R.id.emoji_search_delete)) {
-            val button = panel.findViewById<View>(id)
-            assertTrue(button.height / panel.resources.displayMetrics.density >= 47.5f)
+        // The panel has no replacement typing keyboard; IMEService uses the normal surfaces.
+        assertEquals(3, panel.childCount) // Search bar, status and results only.
+        for (id in listOf(R.id.emoji_search_close, R.id.emoji_search_clear, R.id.emoji_search_language)) {
+            assertTrue(panel.findViewById<View>(id).height / panel.resources.displayMetrics.density >= 47.5f)
         }
     }
+    private fun assertNormalKeyboardSiblings() {
+        val root = LayoutInflater.from(context).inflate(R.layout.main_layout, null)
+        val panel = root.findViewById<EmojiSearchKeyboardView>(R.id.emoji_search_keyboard)
+        val godan = root.findViewById<FlickKeyboardView>(R.id.custom_layout_default)
+        val qwerty = root.findViewById<QWERTYKeyboardView>(R.id.qwerty_view)
+        assertSame(panel.parent, godan.parent)
+        assertSame(panel.parent, qwerty.parent)
+        assertEquals(3, panel.childCount)
+    }
+
+    @Test @Config(qualifiers = "port") fun compactSearchUsesNormalKeyboardSiblings() = assertNormalKeyboardSiblings()
+    @Test @Config(qualifiers = "sw600dp-land") fun unfoldedSearchUsesNormalKeyboardSiblings() = assertNormalKeyboardSiblings()
+
 }

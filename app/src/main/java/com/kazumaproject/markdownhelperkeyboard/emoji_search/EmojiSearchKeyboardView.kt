@@ -17,15 +17,12 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 
-/** A self-contained search surface: typing never changes the destination editor. */
+/** Search controls and results above the existing typing keyboard. */
 class EmojiSearchKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : LinearLayout(context, attrs) {
-    var onText: (String) -> Unit = {}
-    var onDelete: () -> Unit = {}
     var onClear: () -> Unit = {}
     var onClose: () -> Unit = {}
-    var onDone: () -> Unit = {}
     var onLanguageChanged: (Boolean) -> Unit = {}
     var onEmoji: (String) -> Unit = {}
 
@@ -35,12 +32,8 @@ class EmojiSearchKeyboardView @JvmOverloads constructor(
     private val status = MaterialTextView(context)
     private val grid = RecyclerView(context)
     private val gridManager = GridLayoutManager(context, 6)
-    private val keyboard = LinearLayout(context)
     private val language = button("ABC")
-    private val shift = button("⇧")
-    private val letters = mutableListOf<Pair<MaterialButton, Char>>()
     private val resultsAdapter = ResultsAdapter()
-    private var shifted = false
     private var japanese = true
 
     init {
@@ -78,6 +71,10 @@ class EmojiSearchKeyboardView @JvmOverloads constructor(
             setOnClickListener { onClear() }
         }
         header.addView(clear, LayoutParams(dp(48), dp(48)))
+        language.id = R.id.emoji_search_language
+        language.textSize = 14f
+        language.setOnClickListener { onLanguageChanged(!japanese) }
+        header.addView(language, LayoutParams(dp(56), dp(48)))
         addView(header, LayoutParams(LayoutParams.MATCH_PARENT, dp(48)))
         status.apply {
             textSize = 12f
@@ -95,69 +92,21 @@ class EmojiSearchKeyboardView @JvmOverloads constructor(
             setPadding(0, 0, 0, dp(4))
         }
         addView(grid, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
-        keyboard.orientation = VERTICAL
-        for (row in listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")) {
-            val keys = LinearLayout(context).apply { orientation = HORIZONTAL }
-            if (row == "zxcvbnm") {
-                shift.contentDescription = context.getString(R.string.emoji_search_shift)
-                shift.setOnClickListener {
-                    shifted = !shifted
-                    updateLetterLabels()
-                }
-                keys.addView(shift, keyParams())
-            }
-            for (letter in row) {
-                val key = button(letter.toString()).apply {
-                    tag = "emoji-search-key-$letter"
-                    setOnClickListener {
-                        onText(if (shifted && !japanese) letter.uppercase() else letter.toString())
-                        if (shifted) { shifted = false; updateLetterLabels() }
-                    }
-                }
-                letters.add(key to letter)
-                keys.addView(key, keyParams())
-            }
-            if (row == "zxcvbnm") keys.addView(button("⌫").apply {
-                id = R.id.emoji_search_delete
-                contentDescription = context.getString(R.string.emoji_search_delete)
-                setOnClickListener { onDelete() }
-            }, keyParams())
-            keyboard.addView(keys, LayoutParams(LayoutParams.MATCH_PARENT, dp(50)))
-        }
-        val bottom = LinearLayout(context).apply { orientation = HORIZONTAL }
-        language.apply {
-            id = R.id.emoji_search_language
-            textSize = 14f
-            setOnClickListener { setJapanese(!japanese); onLanguageChanged(japanese) }
-        }
-        bottom.addView(language, LayoutParams(dp(88), dp(48)).apply { marginEnd = dp(4) })
-        bottom.addView(button(context.getString(R.string.emoji_search_space)).apply {
-            id = R.id.emoji_search_space
-            textSize = 14f
-            setOnClickListener { onText(" ") }
-        }, LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(4) })
-        bottom.addView(button(context.getString(R.string.emoji_search_done)).apply {
-            id = R.id.emoji_search_done
-            textSize = 14f
-            setOnClickListener { onDone() }
-        }, LayoutParams(dp(72), dp(48)))
-        keyboard.addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, dp(50)))
-        addView(keyboard, LayoutParams(LayoutParams.MATCH_PARENT, dp(200)).apply { gravity = Gravity.CENTER_HORIZONTAL })
         setJapanese(true)
     }
 
     fun setJapanese(value: Boolean) {
         japanese = value
-        shifted = false
-        language.text = if (value) "あ → ABC" else "ABC → あ"
+        language.text = if (value) "ABC" else "あ"
         language.contentDescription = context.getString(
             if (value) R.string.emoji_search_switch_english else R.string.emoji_search_switch_japanese
         )
-        updateLetterLabels()
     }
 
-    fun showResults(text: String, results: List<String>, loading: Boolean = false) {
-        query.text = text.ifEmpty { context.getString(
+    fun showResults(text: String, results: List<String>, loading: Boolean = false, cursor: Int = text.length) {
+        val position = cursor.coerceIn(0, text.length)
+        val displayed = if (position < text.length) text.substring(0, position) + "│" + text.substring(position) else text
+        query.text = displayed.ifEmpty { context.getString(
             if (japanese) R.string.emoji_search_hint_japanese else R.string.emoji_search_hint_english
         ) }
         query.contentDescription = context.getString(R.string.emoji_search_query_label, text)
@@ -177,22 +126,6 @@ class EmojiSearchKeyboardView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         gridManager.spanCount = ((w - paddingLeft - paddingRight) / dp(56)).coerceIn(4, 18)
-        keyboard.layoutParams = keyboard.layoutParams.apply {
-            width = (w - paddingLeft - paddingRight).coerceAtMost(dp(680))
-        }
-    }
-
-    private fun updateLetterLabels() {
-        letters.forEach { (button, letter) ->
-            button.text = if (shifted && !japanese) letter.uppercase() else letter.toString()
-        }
-        shift.isEnabled = !japanese
-        shift.alpha = if (japanese) 0.4f else 1f
-    }
-
-    private fun keyParams() = LayoutParams(0, dp(48), 1f).apply {
-        marginStart = dp(1)
-        marginEnd = dp(1)
     }
 
     private fun button(label: String) = MaterialButton(context).apply {

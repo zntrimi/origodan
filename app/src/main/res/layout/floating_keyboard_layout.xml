@@ -175,10 +175,9 @@
         <com.kazumaproject.markdownhelperkeyboard.emoji_search.EmojiSearchKeyboardView
             android:id="@+id/emoji_search_keyboard"
             android:layout_width="match_parent"
-            android:layout_height="432dp"
-            android:layout_marginBottom="16dp"
+            android:layout_height="208dp"
             android:visibility="gone"
-            app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
+            app:layout_constraintBottom_toTopOf="@+id/floating_keyboard_container" />
 
         <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
             android:id="@+id/floating_symbol_keyboard"

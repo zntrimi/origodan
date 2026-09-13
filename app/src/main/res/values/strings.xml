@@ -1818,7 +1818,7 @@
     <string name="emoji_search_done">Done</string>
     <string name="emoji_search_switch_english">Search in English</string>
     <string name="emoji_search_switch_japanese">Search in Japanese (romaji)</string>
-    <string name="emoji_search_hint_japanese">Japanese (romaji), e.g. inu</string>
+    <string name="emoji_search_hint_japanese">Search with GODAN, e.g. inu</string>
     <string name="emoji_search_hint_english">Search emoji, e.g. smile, heart</string>
     <string name="emoji_search_query_label">Emoji search: %1$s</string>
     <string name="emoji_search_loading">Searching…</string>
