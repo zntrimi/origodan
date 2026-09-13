@@ -17,4 +17,13 @@
     <string name="emoji_category_flags">Flags</string>
     <string name="emoji_category_unknown">Other</string>
     <string name="emoji_search">Search emoji</string>
+    <string name="symbol_mode_emoji">Emoji</string>
+    <string name="symbol_mode_emoticon">Emoticons</string>
+    <string name="symbol_mode_symbol">Symbols</string>
+    <string name="symbol_mode_clipboard">Clipboard</string>
+    <string name="symbol_return_keyboard">Return to keyboard</string>
+    <string name="symbol_delete">Delete</string>
+    <string name="symbol_history">Recent</string>
+    <string name="symbol_empty_history">No recent items yet</string>
+    <string name="symbol_empty_clipboard">Copied items will appear here</string>
 </resources>

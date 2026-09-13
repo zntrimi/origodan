@@ -1268,19 +1268,14 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun createKeyView(keyData: KeyData): View {
-        val baseInsets = if (keyData.isSpecialKey) {
-            listOf(6, 12, 6, 6)
-        } else {
-            listOf(6, 9, 6, 9)
-        }
-
-        val leftInset = getScaledHorizontalInsetDp(baseInsets[0])
-        val topInset = getScaledVerticalInsetDp(baseInsets[1])
-        val rightInset = getScaledHorizontalInsetDp(baseInsets[2])
-        val bottomInset = getScaledVerticalInsetDp(baseInsets[3])
+        // Visual gaps are in dp; touch bounds continue to cover the whole key slot.
+        val leftInset = dpToPx(getScaledHorizontalInsetDp(3))
+        val topInset = dpToPx(getScaledVerticalInsetDp(3))
+        val rightInset = leftInset
+        val bottomInset = topInset
 
         val isDarkTheme = context.isDarkThemeOn()
-        val commonCornerRadius = dpToPx(8).toFloat()
+        val commonCornerRadius = dpToPx(14).toFloat()
         val visualPalette = resolveKeyVisualPalette(keyData)
 
         val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
@@ -1419,49 +1414,18 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
         KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources, qwerty = false) }
-        val highlightColor = manipulateColor(baseColor, 1.2f)
-        val shadowColor = manipulateColor(baseColor, 0.8f)
-
-        val offset = dpToPx(4)
-        val padding = dpToPx(2)
-
-        val shadowDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(shadowColor)
-        }
-
-        val highlightDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(highlightColor)
-        }
-
-        val surfaceDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
+        val idle = GradientDrawable().apply {
             cornerRadius = radius
             setColor(baseColor)
         }
-
-        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-        idleLayer.setLayerInset(0, offset, offset, 0, 0)
-        idleLayer.setLayerInset(1, 0, 0, offset, offset)
-        idleLayer.setLayerInset(2, padding, padding, padding, padding)
-
-        val pressedDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
+        val pressed = GradientDrawable().apply {
             cornerRadius = radius
-            setColor(manipulateColor(baseColor, 0.95f))
+            setColor(ColorUtils.blendARGB(baseColor, customSpecialKeyColor, 0.16f))
         }
-
-        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
-        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
-
-        val stateList = android.graphics.drawable.StateListDrawable()
-        stateList.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
-        stateList.addState(intArrayOf(), idleLayer)
-
-        return stateList
+        return android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressed)
+            addState(intArrayOf(), idle)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -1897,7 +1861,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             baseColor = keyBaseColor,
                             highlightColor = keyHighlightColor,
                             textColor = keyTextColor,
-                            cornerRadius = 20f,
+                            cornerRadius = dpToPx(14).toFloat(),
                             primaryTextSizePx = primaryTextSizePx,
                             secondaryTextSizePx = secondaryTextSizePx
                         )

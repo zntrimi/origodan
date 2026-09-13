@@ -1808,4 +1808,21 @@
     <string name="keyboard_type_romaji">Japanese – Romaji</string>
     <string name="keyboard_type_custom">Custom – User defined</string>
     <string name="clipboard_image_preview_label">Image</string>
+    <string name="utility_panel_title">Tools</string>
+    <string name="utility_panel_close">Return to keyboard</string>
+    <string name="emoji_search_back">Back to emoji</string>
+    <string name="emoji_search_clear">Clear search</string>
+    <string name="emoji_search_shift">Uppercase</string>
+    <string name="emoji_search_delete">Delete search character</string>
+    <string name="emoji_search_space">Space</string>
+    <string name="emoji_search_done">Done</string>
+    <string name="emoji_search_switch_english">Search in English</string>
+    <string name="emoji_search_switch_japanese">Search in Japanese (romaji)</string>
+    <string name="emoji_search_hint_japanese">Japanese (romaji), e.g. inu</string>
+    <string name="emoji_search_hint_english">Search emoji, e.g. smile, heart</string>
+    <string name="emoji_search_query_label">Emoji search: %1$s</string>
+    <string name="emoji_search_loading">Searching…</string>
+    <string name="emoji_search_empty">No emoji found. Try another keyword.</string>
+    <string name="emoji_search_result_hint">%1$d results · Tap repeatedly to insert</string>
+    <string name="emoji_search_insert">Insert %1$s</string>
 </resources>

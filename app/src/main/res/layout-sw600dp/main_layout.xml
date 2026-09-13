@@ -232,15 +232,50 @@
         android:paddingVertical="8dp"
         android:visibility="gone" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/shortcut_panel_recyclerview"
+    <LinearLayout
+        android:id="@+id/shortcut_panel_container"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height"
         android:layout_gravity="bottom"
-        android:background="@color/keyboard_bg"
-        android:clipToPadding="false"
-        android:padding="10dp"
-        android:visibility="gone" />
+        android:background="?attr/colorSurfaceContainer"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/shortcut_panel_close"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/utility_panel_close"
+                android:scaleType="center"
+                android:src="@drawable/baseline_keyboard_arrow_down_24"
+                android:tint="?attr/colorOnSurface" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/utility_panel_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/shortcut_panel_recyclerview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingHorizontal="8dp"
+            android:paddingBottom="8dp" />
+    </LinearLayout>
 
     <com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView
         android:id="@+id/gemma_handwriting_keyboard"
@@ -263,6 +298,12 @@
         android:id="@+id/keyboard_symbol_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+    <com.kazumaproject.markdownhelperkeyboard.emoji_search.EmojiSearchKeyboardView
+        android:id="@+id/emoji_search_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="432dp"
         android:layout_gravity="bottom"
         android:visibility="gone" />
 </com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout>

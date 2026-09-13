@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.markdownhelperkeyboard.emoji_search.EmojiSearchIndex
+import com.kazumaproject.markdownhelperkeyboard.emoji_search.EmojiSearchKeyboardView
 import android.annotation.SuppressLint
 import android.animation.ValueAnimator
 import android.Manifest
@@ -806,6 +808,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
     private var emojiSearchActive: Boolean = false
     private var emojiSearchQuery: String = ""
+    private var emojiSearchJapanese = true
+    private var emojiSearchIndex: EmojiSearchIndex? = null
+    private val emojiSearchConsumedKeyUps = mutableSetOf<Int>()
+    private var splitClipboardHistoryNeedsScrollReset = true
     private var emojiSearchJob: Job? = null
     private var pendingZeroQueryKeyAfterCommit: String? = null
     private var previousLearnableCommittedText: String? = null
@@ -1063,6 +1069,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        if (emojiSearchActive) {
+            renderEmojiSearchSurface()
+            return
+        }
         // CandidateShowFlag.Updating can be emitted once with an empty input while the
         // editor/IME is being recreated (for example, after hiding and showing the keyboard).
         // That event must not make the empty strip behave like an active conversion strip.
@@ -2831,8 +2841,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         previousLearnableCommittedText = null
         pendingEnglishAutoCorrectionUndo = null
+        emojiSearchConsumedKeyUps.clear()
         emojiSearchJob?.cancel()
         emojiSearchJob = null
+        finishEmojiSearch(clearCandidates = false)
         emojiSearchActive = false
         emojiSearchQuery = ""
         resetCustomToggleState()
@@ -4965,6 +4977,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        splitClipboardHistoryNeedsScrollReset = true
         flickInputPreviewCoordinator.cancel(restore = true)
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
@@ -5358,6 +5371,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        finishEmojiSearch(clearCandidates = false)
         forwardDeleteCoordinator.cancel()
         resetCustomToggleState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -6912,6 +6926,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (emojiSearchActive && event != null) {
+            emojiSearchConsumedKeyUps.add(keyCode)
+            when (keyCode) {
+                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> finishEmojiSearch()
+                KeyEvent.KEYCODE_ENTER -> {
+                    finishEmojiSearch()
+                    _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
+                }
+                KeyEvent.KEYCODE_DEL -> deleteEmojiSearchText()
+                else -> if (!event.isCtrlPressed && !event.isMetaPressed && event.unicodeChar > 0) {
+                    appendEmojiSearchText(String(Character.toChars(event.unicodeChar)))
+                }
+            }
+            return true
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true
         ) {
@@ -7904,6 +7933,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (emojiSearchConsumedKeyUps.remove(keyCode)) return true
         if (keyCode == KeyEvent.KEYCODE_BACK && consumeGemmaBackKeyUp) {
             consumeGemmaBackKeyUp = false
             return true
@@ -8974,6 +9004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderDynamicKeysOnActiveSurface()
         renderQwertyStateOnActiveSurface()
         refreshBaselineInputBehaviorForCurrentKeyboard("keyboard state rendered")
+        mainLayoutBinding?.let(::updateSplitClipboardHistory)
     }
 
     private fun refreshActiveSumireLayoutIfNeeded() {
@@ -9165,6 +9196,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyHitTestMode.NEAREST_KEY
         }
         flickView.setKeyboard(createSumireKeyboardLayout(), hitTestMode)
+        // The Sumire state flow does not emit when only its input mode changes.
+        mainLayoutBinding?.let(::updateSplitClipboardHistory)
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
@@ -12004,6 +12037,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutDefault.isVisible = false
             gemmaHandwritingKeyboard.isVisible = false
             keyboardSymbolView.isVisible = false
+            splitClipboardHistory.isVisible = false
             candidatesRowView.isVisible = false
         }
     }
@@ -16731,7 +16765,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isSymbolKeyboardShow.isShown) {
                     mainView.splitClipboardHistory.isVisible = false
-                    mainView.shortcutPanelRecyclerview.isVisible = false
+                    mainView.shortcutPanelContainer.isVisible = false
                     shortcutPanelShown = false
                 }
                 if (isKeyboardFloatingMode == true) {
@@ -17890,6 +17924,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 (clampedHeight * density).toInt()
             }
+        }.let { requestedHeight ->
+            // Browsing needs room for the M3 controls and several rows of results.
+            // Restore the saved key height automatically when the panel closes.
+            if (emojiSearchActive && !isFloating) {
+                emojiSearchHeightPx()
+            } else if (isSymbol && !isFloating) {
+                val browseHeightDp = minOf(344f, resources.configuration.screenHeightDp * 0.55f)
+                requestedHeight.coerceAtLeast((browseHeightDp * density).toInt())
+            } else {
+                requestedHeight
+            }
         }
 
         val widthPx = when {
@@ -17912,7 +17957,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbolKeyboardShown = isSymbol,
         )
         val collapseCandidateStrip =
-            isSymbol || shouldCollapseEmptyCandidateStrip(presentation)
+            emojiSearchActive || isSymbol || shouldCollapseEmptyCandidateStrip(presentation)
         mainView.suggestionViewParent.isVisible = !collapseCandidateStrip
         val candidateStripHeightDp = if (collapseCandidateStrip) {
             0
@@ -17932,6 +17977,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
         val finalKeyboardHeight = when {
+            emojiSearchActive -> heightPx
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
 
@@ -18597,6 +18643,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        if (emojiSearchActive) return
         physicalCandidateCompositionSession?.let { session ->
             if (session.queryText != string) {
                 clearPhysicalCandidateCompositionSession("reading edited")
@@ -21347,6 +21394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyCandidateStripPresentation(presentation: CandidateStripPresentation) {
+        if (emojiSearchActive) { renderEmojiSearchSurface(); return }
         val mainView = mainLayoutBinding ?: return
         mainView.suggestionViewParent.isVisible =
             !keyboardSymbolViewState.value.isShown &&
@@ -21777,6 +21825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter = shortcutPanelAdapter
             itemAnimator = null
         }
+        mainView.shortcutPanelClose.setOnClickListener { closeShortcutPanel(mainView) }
         shortcutPanelAdapter?.onItemClick = { type ->
             closeShortcutPanel(mainView)
             handleShortcutAction(type, mainView)
@@ -21863,20 +21912,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyboardMode == KeyboardInputMode.HIRAGANA &&
             mainView.customLayoutDefault.isVisible &&
             !keyboardSymbolViewState.value.isShown &&
-            !shortcutPanelShown
+            !shortcutPanelShown &&
+            !emojiSearchActive
     }
 
     private fun updateSplitClipboardHistory(mainView: MainLayoutBinding) {
-        splitClipboardHistoryAdapter?.submitList(currentClipboardItems)
         updateCompactClipboardHistoryButton(mainView)
         val visible = isMirrorGodanSurfaceActive(mainView) && currentClipboardItems.isNotEmpty()
+        val adapter = splitClipboardHistoryAdapter
+        if ((visible && !mainView.splitClipboardHistory.isVisible) ||
+            adapter?.currentList != currentClipboardItems
+        ) splitClipboardHistoryNeedsScrollReset = true
         mainView.splitClipboardHistory.isVisible = visible
+        // ListAdapter restores/anchors its scroll position when its diff is applied.
+        // Reset afterwards, only on reopening or a changed list, never on each key.
+        adapter?.submitList(currentClipboardItems) {
+            if (splitClipboardHistoryNeedsScrollReset && mainView.splitClipboardHistory.isVisible) {
+                mainView.splitClipboardHistory.stopScroll()
+                (mainView.splitClipboardHistory.layoutManager as? LinearLayoutManager)
+                    ?.scrollToPositionWithOffset(0, 0)
+                splitClipboardHistoryNeedsScrollReset = false
+            }
+        }
         if (!visible || mainView.root.width <= 0) return
 
         // Mirror GODAN reserves 20% in the middle. Keep a little breathing room on both sides.
         val width = (mainView.root.width * 0.17f).toInt()
         val verticalInset = applicationContext.dpToPx(8)
-        val keyboardHeight = mainView.customLayoutDefault.height.takeIf { it > 0 }
+        val keyboardHeight = mainView.customLayoutDefault.layoutParams.height.takeIf { it > 0 }
             ?: resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.keyboard_height)
         val height = (keyboardHeight - verticalInset * 2).coerceAtLeast(
             applicationContext.dpToPx(96)
@@ -21896,20 +21959,88 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun activeEmojiSearchView(): EmojiSearchKeyboardView? =
+        if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.emojiSearchKeyboard
+        else mainLayoutBinding?.emojiSearchKeyboard
+
     private fun startEmojiSearch() {
         vibrate()
-        emojiSearchJob?.cancel()
-        emojiSearchActive = true
-        emojiSearchQuery = ""
         finishComposingText()
-        setComposingText("", 0)
         _inputString.update { "" }
         stringInTail.set("")
-        customKeyboardMode = KeyboardInputMode.HIRAGANA
-        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-        setCurrentInputModeForSession(InputMode.ModeJapanese)
-        _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
-        createNewKeyboardLayoutForSumire()
+        emojiSearchJob?.cancel()
+        emojiSearchActive = true
+        emojiSearchJapanese = currentInputModeForSession != InputMode.ModeEnglish
+        emojiSearchQuery = ""
+        activeEmojiSearchView()?.apply {
+            setJapanese(emojiSearchJapanese)
+            onText = ::appendEmojiSearchText
+            onDelete = ::deleteEmojiSearchText
+            onClear = { emojiSearchQuery = ""; updateEmojiSearchCandidates() }
+            onClose = { vibrate(); finishEmojiSearch() }
+            onDone = {
+                vibrate()
+                finishEmojiSearch()
+                _keyboardSymbolViewState.value = SymbolKeyboardState(isShown = false)
+            }
+            onLanguageChanged = { japanese ->
+                emojiSearchJapanese = japanese
+                updateEmojiSearchCandidates()
+            }
+            onEmoji = ::insertEmojiSearchResult
+        }
+        renderEmojiSearchSurface()
+        updateEmojiSearchCandidates()
+    }
+
+    private fun emojiSearchHeightPx() = applicationContext.dpToPx(
+        (resources.configuration.screenHeightDp * 0.7f).toInt().coerceIn(320, 432)
+    )
+
+    private fun renderEmojiSearchSurface() {
+        if (!emojiSearchActive) return
+        val panel = activeEmojiSearchView() ?: return
+        val height = emojiSearchHeightPx()
+        if (panel.layoutParams.height != height) {
+            panel.layoutParams = panel.layoutParams.apply { this.height = height }
+        }
+        if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.apply {
+                suggestionViewParent.isVisible = false
+                floatingSymbolKeyboard.isVisible = false
+            }
+            getFloatingKeyboardSurface()?.let(::hideKeyboardViews)
+        } else {
+            mainLayoutBinding?.let { updateKeyboardLayout(it, isSymbolOverride = true) }
+            mainLayoutBinding?.apply {
+                suggestionViewParent.isVisible = false
+                candidateTabLayout.isVisible = false
+                shortcutToolbarRecyclerview.isVisible = false
+                keyboardSymbolView.isVisible = false
+                splitClipboardHistory.isVisible = false
+                candidatesRowView.isVisible = false
+                shortcutPanelContainer.isVisible = false
+            }
+            getNormalKeyboardSurface()?.let(::hideKeyboardViews)
+        }
+        panel.isVisible = true
+        panel.bringToFront()
+    }
+
+    private fun appendEmojiSearchText(text: String) {
+        if (!emojiSearchActive || text.isEmpty()) return
+        emojiSearchQuery = if (emojiSearchJapanese) {
+            mirrorGodanInputComposer.append(emojiSearchQuery, text) { source ->
+                romajiConverter?.convertCustomLayout(source) ?: source
+            }
+        } else emojiSearchQuery + text
+        updateEmojiSearchCandidates()
+    }
+
+    private fun deleteEmojiSearchText() {
+        if (!emojiSearchActive || emojiSearchQuery.isEmpty()) return
+        val end = emojiSearchQuery.offsetByCodePoints(emojiSearchQuery.length, -1)
+        emojiSearchQuery = emojiSearchQuery.substring(0, end)
         updateEmojiSearchCandidates()
     }
 
@@ -21917,32 +22048,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!emojiSearchActive) return
         emojiSearchJob?.cancel()
         val query = emojiSearchQuery
-        val headerText = if (query.isEmpty()) {
-            getString(R.string.emoji_search_prompt)
-        } else {
-            "🔍 $query"
-        }
-        val header = Candidate(
-            string = headerText,
-            type = EMOJI_SEARCH_HEADER_TYPE,
-            length = query.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
-            score = Int.MIN_VALUE,
-        )
-        if (query.isEmpty()) {
-            currentCandidateStripCandidates = listOf(header)
-            currentCandidateStripFullCandidates = listOf(header)
-            refreshCandidateStripContent(candidatesShown = true)
-            return
-        }
+        activeEmojiSearchView()?.showResults(query, emptyList(), loading = true)
         emojiSearchJob = scope.launch {
             val results = withContext(kanaKanjiConversionDispatcher) {
-                awaitKanaKanjiEngineOrNull()?.searchEmojiCandidates(query).orEmpty()
+                val index = emojiSearchIndex ?: assets.open("emoji_search/keywords.tsv")
+                    .reader(Charsets.UTF_8).use { EmojiSearchIndex(it) }
+                    .also { emojiSearchIndex = it }
+                val keywords = index.search(query)
+                val readings = if (query.isNotBlank() && query.any { it !in ' '..'~' }) {
+                    awaitKanaKanjiEngineOrNull()?.searchEmojiCandidates(query).orEmpty()
+                        .map { it.string }
+                } else emptyList()
+                (keywords + readings)
+                    .map { EmojiSkinToneSupport.withSkinTone(it, defaultEmojiSkinTonePreference) }
+                    .distinctBy { it.replace("\uFE0F", "").replace("\uFE0E", "") }
+                    .take(96)
             }
             if (!emojiSearchActive || emojiSearchQuery != query) return@launch
-            val candidates = listOf(header) + results
-            currentCandidateStripCandidates = candidates
-            currentCandidateStripFullCandidates = candidates
-            refreshCandidateStripContent(candidatesShown = true)
+            activeEmojiSearchView()?.showResults(query, results)
+            renderEmojiSearchSurface()
         }
     }
 
@@ -21952,6 +22076,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         emojiSearchJob = null
         emojiSearchActive = false
         emojiSearchQuery = ""
+        mainLayoutBinding?.emojiSearchKeyboard?.isVisible = false
+        floatingKeyboardBinding?.emojiSearchKeyboard?.isVisible = false
+        if (isKeyboardFloatingMode != true) mainLayoutBinding?.let { updateKeyboardLayout(it) }
+        if (keyboardSymbolViewState.value.isShown) {
+            if (isKeyboardFloatingMode == true) {
+                floatingKeyboardBinding?.floatingSymbolKeyboard?.isVisible = true
+            } else mainLayoutBinding?.keyboardSymbolView?.isVisible = true
+        }
         if (clearCandidates) {
             currentCandidateStripCandidates = emptyList()
             currentCandidateStripFullCandidates = emptyList()
@@ -21959,19 +22091,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun insertEmojiSearchResult(emoji: String) {
+        if (!emojiSearchActive) return
+        vibrate()
+        // Commit to the destination, preserving the query and results for repeat taps.
+        commitText(emoji, 1)
+        scope.launch(Dispatchers.IO) {
+            clickedSymbolRepository.insert(SymbolMode.EMOJI, emoji)
+        }
+    }
+
     private fun handleEmojiSearchCandidateClick(candidate: Candidate): Boolean {
         if (!emojiSearchActive) return false
-        if (candidate.type == EMOJI_SEARCH_HEADER_TYPE) {
-            finishEmojiSearch()
-            return true
-        }
-        if (candidate.type != EMOJI_CANDIDATE_TYPE) return true
-        vibrate()
-        commitText(candidate.string, 1)
-        scope.launch(Dispatchers.IO) {
-            clickedSymbolRepository.insert(SymbolMode.EMOJI, candidate.string)
-        }
-        finishEmojiSearch()
+        if (candidate.type == EMOJI_CANDIDATE_TYPE) insertEmojiSearchResult(candidate.string)
         return true
     }
 
@@ -21983,7 +22115,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutPanelShown = true
         getNormalKeyboardSurface()?.let(::hideKeyboardViews)
         mainView.keyboardSymbolView.isVisible = false
-        mainView.shortcutPanelRecyclerview.isVisible = true
+        mainView.shortcutPanelContainer.isVisible = true
         mainView.splitClipboardHistory.isVisible = false
         refreshCandidateStripContent()
     }
@@ -21991,7 +22123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun closeShortcutPanel(mainView: MainLayoutBinding) {
         if (!shortcutPanelShown) return
         shortcutPanelShown = false
-        mainView.shortcutPanelRecyclerview.isVisible = false
+        mainView.shortcutPanelContainer.isVisible = false
         renderCurrentKeyboardStateOnActiveSurface()
         updateSplitClipboardHistory(mainView)
         refreshCandidateStripContent()
@@ -26193,12 +26325,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
         if (emojiSearchActive) {
-            if (emojiSearchQuery.isEmpty()) {
-                finishEmojiSearch()
-            } else {
-                emojiSearchQuery = emojiSearchQuery.dropLast(1)
-                updateEmojiSearchCandidates()
-            }
+            deleteEmojiSearchText()
             return
         }
         clearZeroQueryAllState(refresh = false)

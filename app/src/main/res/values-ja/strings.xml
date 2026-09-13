@@ -1806,4 +1806,21 @@
     <string name="keyboard_type_romaji">日本語 - ローマ字</string>
     <string name="keyboard_type_custom">カスタム - ユーザー定義</string>
     <string name="clipboard_image_preview_label">画像</string>
+    <string name="utility_panel_title">ツール</string>
+    <string name="utility_panel_close">キーボードに戻る</string>
+    <string name="emoji_search_back">絵文字一覧へ戻る</string>
+    <string name="emoji_search_clear">検索語をクリア</string>
+    <string name="emoji_search_shift">大文字に切り替え</string>
+    <string name="emoji_search_delete">検索語を一文字削除</string>
+    <string name="emoji_search_space">空白</string>
+    <string name="emoji_search_done">完了</string>
+    <string name="emoji_search_switch_english">英語入力に切り替え</string>
+    <string name="emoji_search_switch_japanese">日本語のローマ字入力に切り替え</string>
+    <string name="emoji_search_hint_japanese">ローマ字で検索（例：inu → いぬ）</string>
+    <string name="emoji_search_hint_english">英語で検索（例：smile, heart）</string>
+    <string name="emoji_search_query_label">絵文字の検索語：%1$s</string>
+    <string name="emoji_search_loading">検索中…</string>
+    <string name="emoji_search_empty">見つかりません。別の言葉で検索してください</string>
+    <string name="emoji_search_result_hint">%1$d 件・タップで続けて入力できます</string>
+    <string name="emoji_search_insert">%1$s を入力</string>
 </resources>

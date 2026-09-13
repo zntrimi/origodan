@@ -9,8 +9,8 @@ import android.graphics.PorterDuff
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.StateListDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -34,6 +34,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
@@ -71,9 +72,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
     private val recycler: RecyclerView
+    private val panelTitle: TextView
+    private val emptyState: TextView
     private val symbolAdapter = SymbolAdapter()
     private val clipboardAdapter = ClipboardAdapter()
-    private val gridLM = GridLayoutManager(context, 3, RecyclerView.HORIZONTAL, false)
+    private var clipboardScrollResetPending = false
+    private val gridLM = GridLayoutManager(context, 7, RecyclerView.VERTICAL, false)
 
     // View References for functional keys
     private val returnButton: ShapeableImageView
@@ -127,15 +131,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         categoryTab = findViewById(R.id.category_tab_layout)
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
+        panelTitle = findViewById(R.id.symbol_panel_title)
+        emptyState = findViewById(R.id.symbol_empty_state)
         returnButton = findViewById(R.id.return_jp_keyboard_button)
         searchButton = findViewById(R.id.emoji_search_button)
         deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
 
         // Initialize default colors
-        themeIconColor =
-            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
-        themeSelectedIconColor =
-            ContextCompat.getColor(context, com.kazumaproject.core.R.color.enter_key_bg)
+        themeIconColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
+        themeSelectedIconColor = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
         themeKeyBackgroundColor =
             ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
 
@@ -149,6 +153,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             itemClickListener?.onClick(ClickedSymbol(mode = currentMode, symbol = str))
         }
 
+        clipboardAdapter.addOnPagesUpdatedListener {
+            if (clipboardScrollResetPending && recycler.adapter === clipboardAdapter &&
+                clipboardAdapter.itemCount > 0
+            ) {
+                recycler.stopScroll()
+                gridLM.scrollToPositionWithOffset(0, 0)
+                clipboardScrollResetPending = false
+            }
+        }
         clipboardAdapter.setOnItemClickListener { item ->
             clipboardItemClickListener?.invoke(item)
         }
@@ -306,11 +319,13 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         liquidGlassEnable = false
         originalAppearance.values.forEach { it.restore() }
         originalAppearance.clear()
-        themeBackgroundColor = Color.WHITE
-        themeIconColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
-        themeSelectedIconColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.enter_key_bg)
+        themeBackgroundColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
+        themeIconColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
+        themeSelectedIconColor = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
         themeKeyBackgroundColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
         symbolAdapter.setThemeColors(null, null)
+        panelTitle.setTextColor(themeIconColor)
+        emptyState.setTextColor(themeIconColor)
         // Rebuild selection colors using the same path as a fresh Default view.
         val mode = currentMode
         buildModeTabs()
@@ -364,11 +379,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         categoryTab.tabIconTint = tabColorStateList
         categoryTab.setTabTextColors(iconColor, selectedIconColor)
-        categoryTab.setSelectedTabIndicatorColor(Color.TRANSPARENT)
-        categoryTab.tabRippleColor = null // リップル削除
-
-        // ★重要: ニューモーフィズムの影が切れないようにクリッピングを無効化
-        disableClipping(categoryTab)
+        categoryTab.setSelectedTabIndicatorColor(selectedIconColor)
+        categoryTab.tabRippleColor = ColorStateList.valueOf(ColorUtils.setAlphaComponent(selectedIconColor, 32))
 
         // ★重要: タブの生成完了を待ってから背景を適用 (postを使用)
         postTabTheme(categoryTab)
@@ -376,18 +388,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         // 4. Mode Tab (Bottom Bar) の全体設定
         modeTab.backgroundTintList = bgTintList
         modeTab.tabIconTint = tabColorStateList
-        modeTab.setSelectedTabIndicatorColor(Color.TRANSPARENT)
-        modeTab.tabRippleColor = null
+        modeTab.setSelectedTabIndicatorColor(selectedIconColor)
+        modeTab.setTabTextColors(iconColor, selectedIconColor)
+        modeTab.tabRippleColor = categoryTab.tabRippleColor
 
-        // ★重要: クリッピング無効化と遅延適用
-        disableClipping(modeTab)
         postTabTheme(modeTab)
 
-        // 5. 機能キー (Return/Delete) のニューモーフィズム設定
-        val keyRadius = dpToPx(25).toFloat()
-        returnButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
-        searchButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
-        deleteButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
+        // 5. Functional keys use flat, rounded ripples.
+        val keyRadius = dpToPx(24).toFloat()
+        returnButton.background = utilityRippleDrawable(keyBackgroundColor, keyRadius)
+        searchButton.background = utilityRippleDrawable(keyBackgroundColor, keyRadius)
+        deleteButton.background = utilityRippleDrawable(keyBackgroundColor, keyRadius)
 
         val p = dpToPx(8)
         returnButton.setPadding(p, p, p, p)
@@ -397,6 +408,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         returnButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
         searchButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
         deleteButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        panelTitle.setTextColor(iconColor)
+        emptyState.setTextColor(iconColor)
 
         if (currentMode == SymbolMode.CLIPBOARD) {
             buildCategoryTabs()
@@ -408,144 +421,36 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         )
     }
 
-    /**
-     * TabLayoutとその内部のSlidingTabStripのクリッピングを無効にする
-     * これにより、領域外の「影」が描画されるようになります
-     */
-    private fun disableClipping(tabLayout: TabLayout) {
-        tabLayout.clipChildren = false
-        tabLayout.clipToPadding = false
-        val slidingTabStrip = tabLayout.getChildAt(0) as? ViewGroup
-        slidingTabStrip?.clipChildren = false
-        slidingTabStrip?.clipToPadding = false
-    }
-
-    /**
-     * TabLayout内のすべてのタブViewに対して、ニューモーフィズム背景とマージンを適用する
-     */
     private fun postTabTheme(tabLayout: TabLayout) {
         val revision = themeRevision
         tabLayout.post {
-            if (isCustomThemeApplied && revision == themeRevision) applyThemeToTabs(tabLayout, themeBackgroundColor)
-        }
-    }
-
-    private fun applyThemeToTabs(tabLayout: TabLayout, @ColorInt baseColor: Int) {
-        val slidingTabStrip = tabLayout.getChildAt(0) as? ViewGroup ?: return
-
-        for (i in 0 until slidingTabStrip.childCount) {
-            val tabView = slidingTabStrip.getChildAt(i)
-            rememberAppearance(tabView)
-
-            // マージンを設定 (影のスペースを確保するため 4dp 程度確保)
-            val params = tabView.layoutParams as? ViewGroup.MarginLayoutParams
-            if (params != null) {
-                val m = dpToPx(6) // 影(4dp) + 余白(2dp) で余裕を持たせる
-                params.setMargins(m, m, m, m)
-                tabView.layoutParams = params
+            if (!isCustomThemeApplied || revision != themeRevision) return@post
+            val strip = tabLayout.getChildAt(0) as? ViewGroup ?: return@post
+            for (i in 0 until strip.childCount) {
+                val tabView = strip.getChildAt(i)
+                rememberAppearance(tabView)
+                tabView.background = utilityRippleDrawable(themeBackgroundColor, dpToPx(12).toFloat())
             }
-
-            // 背景を設定
-            val radius = dpToPx(8).toFloat()
-            tabView.background = getTabNeumorphDrawable(baseColor, radius)
-
-            // パディング調整 (Drawable内のpaddingとは別に、Viewのコンテンツ位置調整)
-            // TenKeyのロジックではDrawable自体がpaddingを持つため、View自体のpaddingは少なめでOK
-            val p = dpToPx(4)
-            tabView.setPadding(p, p, p, p)
-
-            // 再描画要求
-            tabView.invalidate()
         }
-        tabLayout.requestLayout()
     }
 
-    /**
-     * TenKeyの getDynamicNeumorphDrawable と同等の実装
-     */
-    private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
-        KeyboardSkinRegistry.find(keyboardSkinId)?.let { return it.keyDrawable(resources) }
-        // 1. 色の計算 (TenKeyと同じ係数を使用)
-        // ハイライト色: 明るくする (1.2f)
-        val highlightColor = manipulateColor(baseColor, 1.2f)
-        // シャドウ色: 暗くする (0.8f)
-        val shadowColor = manipulateColor(baseColor, 0.8f)
-        // 押下時の色: ベースより少し暗く (0.95f)
-        val pressedColor = manipulateColor(baseColor, 0.95f)
-
-        // 2. オフセット量とパディング (TenKeyの設定に合わせる)
-        val density = resources.displayMetrics.density
-        val offset = (4 * density).toInt() // 影のずれ幅
-        val padding = (2 * density).toInt() // メイン面の縮小幅
-
-        // --- A. 通常状態 (Idle) の作成 ---
-
-        // レイヤー0: 暗い影 (右下に配置)
-        val shadowDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
+    // Utility surfaces use flat tonal selection and ripples, independently of key skins.
+    private fun utilityRippleDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
+        fun surface(color: Int) = GradientDrawable().apply {
             cornerRadius = radius
-            setColor(shadowColor)
+            setColor(color)
         }
-
-        // レイヤー1: 明るいハイライト (左上に配置)
-        val highlightDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(highlightColor)
+        val content = StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_selected), surface(
+                ColorUtils.blendARGB(baseColor, themeSelectedIconColor, 0.12f)
+            ))
+            addState(intArrayOf(), surface(Color.TRANSPARENT))
         }
-
-        // レイヤー2: メインの面
-        val surfaceDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(baseColor)
-        }
-
-        // LayerDrawableで重ねる (下から順に描画)
-        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-
-        // インセット設定 (TenKeyと一致させる)
-        // 影: 左と上を空けて、右下に表示
-        idleLayer.setLayerInset(0, offset, offset, 0, 0)
-        // ハイライト: 右と下を空けて、左上に表示
-        idleLayer.setLayerInset(1, 0, 0, offset, offset)
-        // メイン面: 全体にpaddingを入れて中央に配置
-        idleLayer.setLayerInset(2, padding, padding, padding, padding)
-
-
-        // --- B. 押下・選択状態 (Pressed / Selected) の作成 ---
-
-        val pressedDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(pressedColor)
-        }
-
-        // サイズが変わらないようにLayerDrawableにして同じInsetを与える
-        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
-        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
-
-
-        // --- C. StateListDrawable (Selector) にまとめる ---
-        val stateListDrawable = StateListDrawable()
-
-        // 選択中 (TabLayout用)
-        stateListDrawable.addState(
-            intArrayOf(android.R.attr.state_selected),
-            pressedLayer
+        return RippleDrawable(
+            ColorStateList.valueOf(ColorUtils.setAlphaComponent(themeSelectedIconColor, 32)),
+            content,
+            surface(Color.WHITE),
         )
-        // 押下中 (ボタン用)
-        stateListDrawable.addState(
-            intArrayOf(android.R.attr.state_pressed),
-            pressedLayer
-        )
-        // 通常時
-        stateListDrawable.addState(
-            intArrayOf(),
-            idleLayer
-        )
-
-        return stateListDrawable
     }
 
     fun setOnDeleteButtonFingerUpListener(listener: () -> Unit) {
@@ -716,13 +621,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun buildModeTabs() {
         modeTab.removeAllTabs()
         listOf(
-            com.kazumaproject.core.R.drawable.mood_24px,
-            com.kazumaproject.core.R.drawable.emoticon_24px,
-            com.kazumaproject.core.R.drawable.star_24px,
-            com.kazumaproject.core.R.drawable.clip_board,
+            R.string.symbol_mode_emoji,
+            R.string.symbol_mode_emoticon,
+            R.string.symbol_mode_symbol,
+            R.string.symbol_mode_clipboard,
         ).forEach { res ->
-            modeTab.addTab(modeTab.newTab().setIcon(res))
+            modeTab.addTab(modeTab.newTab().setText(res), false)
         }
+        modeTab.setTabTextColors(themeIconColor, themeSelectedIconColor)
+        modeTab.setSelectedTabIndicatorColor(themeSelectedIconColor)
 
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
         if (isCustomThemeApplied) {
@@ -739,7 +646,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         val selectedColor = themeSelectedIconColor
 
         categoryTab.setTabTextColors(normalColor, selectedColor)
-        categoryTab.setSelectedTabIndicatorColor(if (isCustomThemeApplied) Color.TRANSPARENT else selectedColor)
+        categoryTab.setSelectedTabIndicatorColor(selectedColor)
 
         val states = arrayOf(
             intArrayOf(android.R.attr.state_selected),
@@ -755,7 +662,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         when (currentMode) {
             SymbolMode.EMOJI -> {
                 if (historyEmojiList.isNotEmpty()) {
-                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon).setContentDescription(R.string.symbol_history))
                 }
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
@@ -768,7 +675,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
             SymbolMode.EMOTICON -> {
                 if (historyEmoticonList.isNotEmpty()) {
-                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon).setContentDescription(R.string.symbol_history))
                 }
                 val orderedKeys = EmoticonCategory.entries
                 orderedKeys.forEach { category ->
@@ -788,7 +695,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
             SymbolMode.SYMBOL -> {
                 if (historySymbolList.isNotEmpty()) {
-                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon).setContentDescription(R.string.symbol_history))
                 }
                 val orderedKeys = SymbolCategory.entries
                 orderedKeys.forEach { category ->
@@ -865,6 +772,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateSymbolsForCategory(index: Int) {
+        clipboardScrollResetPending = currentMode == SymbolMode.CLIPBOARD
+        val modeLabel = when (currentMode) {
+            SymbolMode.EMOJI -> R.string.symbol_mode_emoji
+            SymbolMode.EMOTICON -> R.string.symbol_mode_emoticon
+            SymbolMode.SYMBOL -> R.string.symbol_mode_symbol
+            SymbolMode.CLIPBOARD -> R.string.symbol_mode_clipboard
+        }
+        val selectedTab = categoryTab.getTabAt(index)
+        panelTitle.text = selectedTab?.text ?: selectedTab?.contentDescription ?: context.getString(modeLabel)
+        searchButton.visibility = if (currentMode == SymbolMode.EMOJI) View.VISIBLE else View.GONE
+        emptyState.visibility = View.GONE
         skinTonePopup?.dismiss()
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
@@ -877,7 +795,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     SymbolMode.CLIPBOARD -> {
                         recycler.adapter = clipboardAdapter
                         gridLM.spanCount =
-                            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 2 else 4
+                            (availableGridWidthDp() / 200).coerceIn(1, 4)
                         gridLM.orientation = RecyclerView.VERTICAL
                         gridLM.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                             override fun getSpanSize(position: Int): Int {
@@ -885,6 +803,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             }
                         }
                         val clipboardListItems = buildClipboardListItems(clipBoardItems)
+                        emptyState.setText(R.string.symbol_empty_clipboard)
+                        emptyState.visibility = if (clipboardListItems.isEmpty()) View.VISIBLE else View.GONE
                         Pager(
                             config = PagingConfig(pageSize = 20, enablePlaceholders = false),
                             pagingSourceFactory = { ClipboardPagingSource(clipboardListItems) }
@@ -939,32 +859,18 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             else -> emptyList()
                         }
 
-                        when (currentMode) {
-                            SymbolMode.EMOTICON -> symbolAdapter.setItemMargins(10, 8, context)
-                            SymbolMode.SYMBOL -> symbolAdapter.setItemMargins(14, 8, context)
-                            else -> symbolAdapter.setItemMargins(4, 3, context)
-                        }
-
+                        symbolAdapter.setItemMargins(2, 2, context)
                         symbolAdapter.showSkinToneIndicators =
                             currentMode == SymbolMode.EMOJI && !isHistoryCategorySelected()
-
                         symbolAdapter.symbolTextSize = when (currentMode) {
-                            SymbolMode.EMOJI -> {
-                                if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
-                            }
-
-                            SymbolMode.EMOTICON -> 14f
-                            SymbolMode.SYMBOL -> 13f
+                            SymbolMode.EMOJI -> 30f
+                            SymbolMode.EMOTICON -> 16f
+                            SymbolMode.SYMBOL -> 20f
                             SymbolMode.CLIPBOARD -> 16f
                         }
-
-                        gridLM.spanCount = when (currentMode) {
-                            SymbolMode.EMOJI -> 7
-                            SymbolMode.EMOTICON -> 3
-                            SymbolMode.SYMBOL -> 5
-                            else -> 5
-                        }
-                        gridLM.orientation = RecyclerView.VERTICAL
+                        updateGridColumns()
+                        emptyState.setText(R.string.symbol_empty_history)
+                        emptyState.visibility = if (listForPaging.isEmpty()) View.VISIBLE else View.GONE
 
                         Pager(
                             config = PagingConfig(pageSize = 100, enablePlaceholders = false),
@@ -974,6 +880,26 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+    private fun availableGridWidthDp(): Int {
+        val pixels = recycler.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        return ((pixels - recycler.paddingLeft - recycler.paddingRight) / resources.displayMetrics.density).toInt()
+    }
+
+    private fun updateGridColumns() {
+        gridLM.orientation = RecyclerView.VERTICAL
+        gridLM.spanCount = when (currentMode) {
+            SymbolMode.EMOJI -> (availableGridWidthDp() / 56).coerceIn(4, 18)
+            SymbolMode.EMOTICON -> (availableGridWidthDp() / 140).coerceIn(1, 6)
+            SymbolMode.SYMBOL -> (availableGridWidthDp() / 64).coerceIn(3, 16)
+            SymbolMode.CLIPBOARD -> (availableGridWidthDp() / 200).coerceIn(1, 4)
+        }
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != oldw) recycler.post { updateGridColumns() }
     }
 
     private fun showSkinTonePopup(symbol: String, anchor: View) {

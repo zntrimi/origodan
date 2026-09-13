@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
     android:layout_gravity="center"
-    android:minWidth="32dp"
-    android:minHeight="32dp">
+    android:minWidth="48dp"
+    android:minHeight="48dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/symbol_text"
@@ -14,7 +14,7 @@
         android:textAlignment="center"
         android:textColor="@color/symbol_text_color"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:includeFontPadding="false" />
 
     <View
         android:id="@+id/skin_tone_indicator"

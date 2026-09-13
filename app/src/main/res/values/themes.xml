@@ -2,11 +2,11 @@
     <!-- Base application theme. -->
     <style name="Theme.MarkdownKeyboard" parent="Theme.Material3.DynamicColors.DayNight">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/enter_key_bg</item>
+        <item name="colorPrimary">@color/keyboard_primary</item>
         <item name="colorPrimaryVariant">@color/blue_primary_color</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/main_text_color</item>
+        <item name="colorSecondary">@color/keyboard_secondary</item>
         <item name="colorSecondaryVariant">@color/main_text_color</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
@@ -15,11 +15,11 @@
         <item name="android:splitMotionEvents">false</item>
     </style>
 
-    <style name="Theme.MarkdownKeyboard.ManualSeed" parent="Theme.AppCompat.DayNight">
-        <item name="colorPrimary">@color/enter_key_bg</item>
+    <style name="Theme.MarkdownKeyboard.ManualSeed" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/keyboard_primary</item>
         <item name="colorPrimaryVariant">@color/blue_primary_color</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/main_text_color</item>
+        <item name="colorSecondary">@color/keyboard_secondary</item>
         <item name="colorSecondaryVariant">@color/main_text_color</item>
         <item name="colorOnSecondary">@color/black</item>
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>

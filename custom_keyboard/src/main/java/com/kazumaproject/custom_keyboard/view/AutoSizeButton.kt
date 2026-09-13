@@ -148,6 +148,7 @@ class AutoSizeButton @JvmOverloads constructor(
         if (guideTextSize <= 0f) return
 
         guidePaint.color = flickGuideTextColor
+        guidePaint.alpha = (Color.alpha(flickGuideTextColor) * 0.72f).toInt()
         guidePaint.textSize = guideTextSize
         guidePaint.typeface = typeface
 

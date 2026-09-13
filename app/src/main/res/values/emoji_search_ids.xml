@@ -1,0 +1,10 @@
+<resources>
+    <item name="emoji_search_close" type="id" />
+    <item name="emoji_search_clear" type="id" />
+    <item name="emoji_search_delete" type="id" />
+    <item name="emoji_search_space" type="id" />
+    <item name="emoji_search_done" type="id" />
+    <item name="emoji_search_query" type="id" />
+    <item name="emoji_search_results" type="id" />
+    <item name="emoji_search_language" type="id" />
+</resources>
