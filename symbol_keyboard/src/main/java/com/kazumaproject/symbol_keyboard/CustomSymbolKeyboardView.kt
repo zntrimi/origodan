@@ -42,6 +42,7 @@ import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.snippet.SnippetItem
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
@@ -76,6 +77,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private val emptyState: TextView
     private val symbolAdapter = SymbolAdapter()
     private val clipboardAdapter = ClipboardAdapter()
+    private val snippetAdapter = SnippetAdapter()
     private var clipboardScrollResetPending = false
     private val gridLM = GridLayoutManager(context, 7, RecyclerView.VERTICAL, false)
 
@@ -104,6 +106,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
     private var clipBoardItems: List<ClipboardItem> = emptyList()
+    private var snippetItems: List<SnippetItem> = emptyList()
     private var currentMode: SymbolMode = SymbolMode.EMOJI
 
     private var pagingJob: Job? = null
@@ -121,6 +124,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var clipboardItemClickListener: ((ClipboardItem) -> Unit)? = null
     private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null
     private var clipboardHistoryToggleListener: ClipboardHistoryToggleListener? = null
+    private var snippetItemClickListener: ((SnippetItem) -> Unit)? = null
     private var defaultEmojiSkinToneChangeListener: ((String) -> Unit)? = null
     private var isClipboardHistoryEnabled: Boolean = false
     private var onDeleteFingerUpListener: (() -> Unit)? = null
@@ -168,6 +172,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         clipboardAdapter.setOnItemActionListener { item, action ->
             clipboardItemLongClickListener?.onAction(item, action)
+        }
+
+        snippetAdapter.setOnItemClickListener { item ->
+            snippetItemClickListener?.invoke(item)
         }
 
         symbolAdapter.setOnItemLongClickListener { str, pos, anchor ->
@@ -539,6 +547,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    fun setOnSnippetItemClickListener(l: (SnippetItem) -> Unit) {
+        snippetItemClickListener = l
+    }
+
+    fun updateSnippetItems(newItems: List<SnippetItem>) {
+        this.snippetItems = newItems
+        if (currentMode == SymbolMode.SNIPPET) {
+            updateSymbolsForCategory(categoryTab.selectedTabPosition)
+        }
+    }
+
     fun setClipboardHistoryEnabled(isEnabled: Boolean) {
         this.isClipboardHistoryEnabled = isEnabled
         if (currentMode == SymbolMode.CLIPBOARD) {
@@ -576,10 +595,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         clipBoardItems: List<ClipboardItem>,
         symbolsHistory: List<ClickedSymbol>,
         symbolMode: SymbolMode = SymbolMode.EMOJI,
-        defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
+        defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE,
+        snippets: List<SnippetItem> = emptyList(),
     ) {
         this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
+        this.snippetItems = snippets
         this.defaultEmojiSkinTone =
             if (EmojiSkinToneSupport.isSupportedSkinToneValue(defaultEmojiSkinTone)) {
                 defaultEmojiSkinTone
@@ -625,9 +646,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             R.string.symbol_mode_emoticon,
             R.string.symbol_mode_symbol,
             R.string.symbol_mode_clipboard,
+            R.string.symbol_mode_snippet,
         ).forEach { res ->
             modeTab.addTab(modeTab.newTab().setText(res), false)
         }
+        updateModeTabMode()
         modeTab.setTabTextColors(themeIconColor, themeSelectedIconColor)
         modeTab.setSelectedTabIndicatorColor(themeSelectedIconColor)
 
@@ -739,6 +762,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         .setTextColor(normalColor)
                 }
             }
+
+            SymbolMode.SNIPPET -> {
+                categoryTab.addTab(categoryTab.newTab().setText(R.string.symbol_mode_snippet))
+            }
         }
 
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
@@ -778,6 +805,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             SymbolMode.EMOTICON -> R.string.symbol_mode_emoticon
             SymbolMode.SYMBOL -> R.string.symbol_mode_symbol
             SymbolMode.CLIPBOARD -> R.string.symbol_mode_clipboard
+            SymbolMode.SNIPPET -> R.string.symbol_mode_snippet
         }
         val selectedTab = categoryTab.getTabAt(index)
         panelTitle.text = selectedTab?.text ?: selectedTab?.contentDescription ?: context.getString(modeLabel)
@@ -785,6 +813,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         emptyState.visibility = View.GONE
         skinTonePopup?.dismiss()
         pagingJob?.cancel()
+        if (currentMode == SymbolMode.SNIPPET) {
+            // スニペットは少数なので Paging を使わず ListAdapter で直接表示する。
+            recycler.adapter = snippetAdapter
+            gridLM.spanSizeLookup = GridLayoutManager.DefaultSpanSizeLookup()
+            updateGridColumns()
+            emptyState.setText(R.string.symbol_empty_snippet)
+            emptyState.visibility = if (snippetItems.isEmpty()) View.VISIBLE else View.GONE
+            snippetAdapter.submitList(snippetItems)
+            recycler.scrollToPosition(0)
+            return
+        }
         lifecycleOwner?.let { owner ->
             pagingJob = owner.lifecycleScope.launch {
                 symbolAdapter.submitData(PagingData.empty())
@@ -866,7 +905,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             SymbolMode.EMOJI -> 30f
                             SymbolMode.EMOTICON -> 16f
                             SymbolMode.SYMBOL -> 20f
-                            SymbolMode.CLIPBOARD -> 16f
+                            SymbolMode.CLIPBOARD, SymbolMode.SNIPPET -> 16f
                         }
                         updateGridColumns()
                         emptyState.setText(R.string.symbol_empty_history)
@@ -893,13 +932,32 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             SymbolMode.EMOJI -> (availableGridWidthDp() / 56).coerceIn(4, 18)
             SymbolMode.EMOTICON -> (availableGridWidthDp() / 140).coerceIn(1, 6)
             SymbolMode.SYMBOL -> (availableGridWidthDp() / 64).coerceIn(3, 16)
-            SymbolMode.CLIPBOARD -> (availableGridWidthDp() / 200).coerceIn(1, 4)
+            SymbolMode.CLIPBOARD, SymbolMode.SNIPPET -> (availableGridWidthDp() / 200).coerceIn(1, 4)
+        }
+    }
+
+    /**
+     * モードタブは等幅 (fixed) を基本にするが、狭い画面で 5 タブ分のラベルが収まらない場合は
+     * 折り返しや省略で崩れるのを避けるためスクロール可能にする。
+     */
+    private fun updateModeTabMode() {
+        val tabCount = modeTab.tabCount.takeIf { it > 0 } ?: return
+        val widthPx = width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val perTabDp = widthPx / resources.displayMetrics.density / tabCount
+        val mode = if (perTabDp >= MODE_TAB_MIN_WIDTH_DP) TabLayout.MODE_FIXED else TabLayout.MODE_SCROLLABLE
+        if (modeTab.tabMode != mode) {
+            modeTab.tabMode = mode
+            modeTab.tabGravity =
+                if (mode == TabLayout.MODE_FIXED) TabLayout.GRAVITY_FILL else TabLayout.GRAVITY_START
         }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (w != oldw) recycler.post { updateGridColumns() }
+        if (w != oldw) {
+            updateModeTabMode()
+            recycler.post { updateGridColumns() }
+        }
     }
 
     private fun showSkinTonePopup(symbol: String, anchor: View) {
@@ -989,7 +1047,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             SymbolMode.EMOJI -> historyEmojiList.isNotEmpty() && categoryTab.selectedTabPosition == 0
             SymbolMode.EMOTICON -> historyEmoticonList.isNotEmpty() && categoryTab.selectedTabPosition == 0
             SymbolMode.SYMBOL -> historySymbolList.isNotEmpty() && categoryTab.selectedTabPosition == 0
-            SymbolMode.CLIPBOARD -> false
+            SymbolMode.CLIPBOARD, SymbolMode.SNIPPET -> false
         }
     }
 
@@ -1098,4 +1156,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         updateSymbolsForCategory(categoryTab.selectedTabPosition)
     }
 
+    companion object {
+        /** 「スニペット」「Emoticons」程度のラベルが 14sp で折り返さずに収まる 1 タブあたりの幅。 */
+        private const val MODE_TAB_MIN_WIDTH_DP = 88f
+    }
 }

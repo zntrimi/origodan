@@ -21,9 +21,11 @@
     <string name="symbol_mode_emoticon">Emoticons</string>
     <string name="symbol_mode_symbol">Symbols</string>
     <string name="symbol_mode_clipboard">Clipboard</string>
+    <string name="symbol_mode_snippet">Snippets</string>
     <string name="symbol_return_keyboard">Return to keyboard</string>
     <string name="symbol_delete">Delete</string>
     <string name="symbol_history">Recent</string>
     <string name="symbol_empty_history">No recent items yet</string>
     <string name="symbol_empty_clipboard">Copied items will appear here</string>
+    <string name="symbol_empty_snippet">Register frequently used text such as email addresses in Settings › Snippets</string>
 </resources>

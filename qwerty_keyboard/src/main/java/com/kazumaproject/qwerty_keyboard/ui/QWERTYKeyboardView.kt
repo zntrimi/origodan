@@ -183,6 +183,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isNumberKeysShow: Boolean = false
     private var isSymbolKeymapShow: Boolean = false
+    // 「句読点ボタン」設定。英語モードの "." はこの設定に関係なく常に表示する。
+    private var showKutoutenButtons: Boolean = false
     private var numberKeyFlickUpChars: Map<String, String> = emptyMap()
     private var numberKeyFlickDownChars: Map<String, String> = emptyMap()
 
@@ -422,6 +424,31 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 keyKuten.text = "."
                 keyTouten.text = ","
             }
+        }
+        applyPunctuationKeyLayout(romajiMode)
+    }
+
+    /**
+     * 英語モードでは "." を常に表示し、その分 Return キーを縮めて最下段の合計幅を保つ。
+     * "," と日本語モードの「、。」は「句読点ボタン」設定に従う。
+     *
+     * 最下段は weight で分配しているため、"." (0.5) を出すときは Return を 1.0 → 0.5 にして
+     * スペースキーなど他のキーの幅が変わらないようにする。
+     */
+    private fun applyPunctuationKeyLayout(romajiMode: Boolean) {
+        val showPeriod = showKutoutenButtons || !romajiMode
+        binding.keyKuten.isVisible = showPeriod
+        binding.keyTouten.isVisible = showKutoutenButtons
+
+        val returnWeight = if (!romajiMode && showPeriod) {
+            RETURN_KEY_WEIGHT_WITH_PERIOD
+        } else {
+            RETURN_KEY_WEIGHT_DEFAULT
+        }
+        val params = binding.keyReturn.layoutParams as? ConstraintLayout.LayoutParams ?: return
+        if (params.horizontalWeight != returnWeight) {
+            params.horizontalWeight = returnWeight
+            binding.keyReturn.layoutParams = params
         }
     }
 
@@ -2909,8 +2936,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding.cursorRight.isVisible = showCursors
         binding.keySwitchDefault.isVisible = showSwitchKey
         binding.keyEmoji.isVisible = showEmojiKey
-        binding.keyKuten.isVisible = showKutouten
-        binding.keyTouten.isVisible = showKutouten
+        showKutoutenButtons = showKutouten
+        applyPunctuationKeyLayout(romajiModeState.value)
     }
 
     fun setRomajiEnglishSwitchKeyVisibility(showRomajiEnglishKey: Boolean) {
@@ -3084,6 +3111,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setDefaultView() {
         _qwertyMode.update { QWERTYMode.Default }
+    }
+
+    companion object {
+        /** XML (qwerty_layout.xml) の key_return の layout_constraintHorizontal_weight と揃える。 */
+        private const val RETURN_KEY_WEIGHT_DEFAULT = 1f
+
+        /** "." (weight 0.5) を出す分だけ Return を縮め、最下段の合計 weight を変えない。 */
+        private const val RETURN_KEY_WEIGHT_WITH_PERIOD = 0.5f
     }
 }
 

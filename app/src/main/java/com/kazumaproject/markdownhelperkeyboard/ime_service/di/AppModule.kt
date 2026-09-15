@@ -62,6 +62,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_45_46
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_46_47
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_47_48
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_48_49
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -88,6 +89,7 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.snippet.database.SnippetDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
@@ -168,6 +170,7 @@ object AppModule {
             MIGRATION_45_46,
             MIGRATION_46_47,
             MIGRATION_47_48,
+            MIGRATION_48_49,
         )
         .build()
 
@@ -198,6 +201,10 @@ object AppModule {
     @Singleton
     @Provides
     fun providesTextMacroDao(db: AppDatabase): TextMacroDao = db.textMacroDao()
+
+    @Singleton
+    @Provides
+    fun providesSnippetDao(db: AppDatabase): SnippetDao = db.snippetDao()
 
     @Singleton
     @Provides

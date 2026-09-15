@@ -159,6 +159,7 @@
     <string name="user_template_explanation"><![CDATA[You can register email addresses, code snippets, Markdown tables, and more with short "readings". When you type the registered "reading" exactly on the keyboard, the full registered text will appear as a conversion candidate.\n\nExamples:\n- Reading: myemail\n  Template: my.long.email.address@example.com\n- Reading: html5\n  Template: <!DOCTYPE html><html>…</html>]]></string>
     <string name="clipboard_history_title">Clipboard History</string>
     <string name="compact_clipboard_history_content_description">Show all clipboard history</string>
+    <string name="compact_select_all_content_description">Select all text</string>
     <string name="dialog_image_description">dialog_image_description</string>
     <string name="keyboard_selection_summary">You can add or remove keyboards</string>
     <string name="keyboard_selection_preference_title">Keyboard Selection</string>
@@ -284,7 +285,7 @@
     <string name="qwerty_show_cursor_buttons_summary_off">Do not show cursor buttons on the QWERTY keyboard.</string>
     <string name="qwerty_show_kutouten_buttons_title">Punctuation Buttons</string>
     <string name="qwerty_show_kutouten_buttons_summary_on">Show punctuation (、。) buttons on the QWERTY keyboard.</string>
-    <string name="qwerty_show_kutouten_buttons_summary_off">Do not show punctuation (、。) buttons on the QWERTY keyboard.</string>
+    <string name="qwerty_show_kutouten_buttons_summary_off">Do not show punctuation (、。) buttons on the QWERTY keyboard. The "." key stays visible in English mode.</string>
     <string name="qwerty_show_switch_ime_button_title">Switch IME Button</string>
     <string name="qwerty_show_switch_ime_button_summary_on">Show the keyboard switch (globe icon) button.</string>
     <string name="qwerty_show_switch_ime_button_summary_off">Do not show the keyboard switch (globe icon) button.</string>
@@ -1513,7 +1514,7 @@
     <string name="setting_category_management_title">Management</string>
     <string name="setting_management_learn_dictionary_summary">Review and edit learned dictionary entries</string>
     <string name="setting_management_user_dictionary_summary">Register and manage user dictionary words</string>
-    <string name="setting_management_user_template_summary">Manage reusable templates and snippets</string>
+    <string name="setting_management_user_template_summary">Manage templates recalled by reading</string>
     <string name="setting_management_custom_keyboard_summary">Manage custom keyboard layouts</string>
     <string name="setting_search_title">Search Settings</string>
     <string name="setting_search_hint">Search by setting name, description, or key</string>
@@ -1647,6 +1648,26 @@
     <string name="shortcut_toolbar_summary_date_picker">Insert today\'s date.</string>
     <string name="shortcut_toolbar_summary_voice_input">Start voice input.</string>
     <string name="shortcut_toolbar_summary_clip_board">Show clipboard history.</string>
+    <string name="shortcut_toolbar_summary_snippet">Show snippets for one-tap insertion.</string>
+    <!-- Snippets (one-tap text such as email addresses) -->
+    <string name="snippet_title">Snippets</string>
+    <string name="setting_management_snippet_summary">Manage one-tap text such as email addresses</string>
+    <string name="snippet_label_hint">Label (optional)</string>
+    <string name="snippet_text_hint">Text to insert</string>
+    <string name="snippet_add">Add snippet</string>
+    <string name="snippet_edit">Edit snippet</string>
+    <string name="snippet_registered_list">Registered snippets</string>
+    <string name="snippet_explanation">Snippets are short texts you insert with one tap, such as email addresses or greetings. Open them from the Snippets button at the right end of the candidate bar, or the Snippets tab of the emoji panel. On a wide screen they also appear at the top of the center history list. Drag the handle to reorder.</string>
+    <string name="snippet_empty_text_error">Enter the text to insert</string>
+    <string name="snippet_delete_confirm">Delete “%1$s”?</string>
+    <string name="snippet_delete_all_confirm">Delete all snippets? Templates and macros are not affected.</string>
+    <string name="snippet_saved">Snippet saved</string>
+    <string name="snippet_deleted">Snippet deleted</string>
+    <string name="snippet_operation_failed">Snippet operation failed: %1$s</string>
+    <string name="snippet_import_success">%1$d snippets imported</string>
+    <string name="snippet_export_success">Snippets exported</string>
+    <string name="snippet_nothing_to_export">There are no snippets to export</string>
+    <string name="snippet_reorder_handle">Drag to reorder</string>
     <string name="conversion_beam_width_category_title">Conversion Search</string>
     <string name="conversion_beam_width_preference_title">Conversion beam width</string>
     <string name="conversion_beam_width_preference_summary">Sets how many lattice nodes are kept during kana-kanji conversion search. Default: 20.</string>

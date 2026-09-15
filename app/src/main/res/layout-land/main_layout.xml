@@ -113,7 +113,7 @@
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/compact_select_all_button"
             app:layout_constraintTop_toTopOf="parent" />
 
         <!-- Visibility Toggle Button -->
@@ -132,6 +132,24 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/compact_select_all_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="2dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/compact_select_all_content_description"
+            android:elevation="0dp"
+            android:padding="10dp"
+            android:src="@drawable/text_select_start_24dp"
+            android:stateListAnimator="@null"
+            android:tint="@color/keyboard_icon_color"
+            android:translationZ="0dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/compact_clipboard_history_button"
             android:layout_width="44dp"
             android:layout_height="44dp"
@@ -141,6 +159,24 @@
             android:elevation="0dp"
             android:padding="10dp"
             android:src="@drawable/history_24dp"
+            android:stateListAnimator="@null"
+            android:tint="@color/keyboard_icon_color"
+            android:translationZ="0dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/compact_snippet_button"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/compact_snippet_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="2dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/snippet_title"
+            android:elevation="0dp"
+            android:padding="10dp"
+            android:src="@drawable/text_snippet_24px"
             android:stateListAnimator="@null"
             android:tint="@color/keyboard_icon_color"
             android:translationZ="0dp"

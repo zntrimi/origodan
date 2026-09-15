@@ -26,7 +26,8 @@ class ShortcutRepository @Inject constructor(
         ShortcutType.KEYBOARD_PICKER,
         ShortcutType.KEYBOARD_LAYOUT_EDIT,
         ShortcutType.GEMMA_HANDWRITING,
-        ShortcutType.CLIP_BOARD
+        ShortcutType.CLIP_BOARD,
+        ShortcutType.SNIPPET,
     )
 
     /**

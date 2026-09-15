@@ -159,6 +159,7 @@
     <string name="user_template_explanation"><![CDATA[メールアドレスやコードスニペット、Markdownの表などを短い「読み」で登録できます。キーボードで登録した「読み」を正確に入力すると、変換候補に登録した全文が表示されます。\n\n例:\n- 読み: myemail\n 定型文: my.long.email.address@example.com\n- 読み: html5\n 定型文: <!DOCTYPE html><html>…</html>]]></string>
     <string name="clipboard_history_title">クリップボードの履歴</string>
     <string name="compact_clipboard_history_content_description">クリップボード履歴をすべて表示</string>
+    <string name="compact_select_all_content_description">全選択</string>
     <string name="dialog_image_description">dialog_image_description</string>
     <string name="keyboard_selection_summary">キーボードの追加、削除ができます</string>
     <string name="keyboard_selection_preference_title">キーボードの選択</string>
@@ -283,7 +284,7 @@
     <string name="qwerty_show_cursor_buttons_summary_off">QWERTY キーボードにカーソルボタンを表示しません。</string>
     <string name="qwerty_show_kutouten_buttons_title">句読点ボタン</string>
     <string name="qwerty_show_kutouten_buttons_summary_on">QWERTY キーボードに句読点（、。）ボタンを表示します。</string>
-    <string name="qwerty_show_kutouten_buttons_summary_off">QWERTY キーボードに句読点（、。）ボタンを表示しません。</string>
+    <string name="qwerty_show_kutouten_buttons_summary_off">QWERTY キーボードに句読点（、。）ボタンを表示しません。英語モードの「.」は常に表示されます。</string>
     <string name="qwerty_show_switch_ime_button_title">IME 切り替えボタン</string>
     <string name="qwerty_show_switch_ime_button_summary_on">キーボード切り替え（地球儀アイコン）ボタンを表示します。</string>
     <string name="qwerty_show_switch_ime_button_summary_off">キーボード切り替え（地球儀アイコン）ボタンを表示しません。</string>
@@ -1473,7 +1474,7 @@
     <string name="setting_category_management_title">管理</string>
     <string name="setting_management_learn_dictionary_summary">学習辞書の内容を確認・編集します</string>
     <string name="setting_management_user_dictionary_summary">ユーザー辞書の単語を登録・管理します</string>
-    <string name="setting_management_user_template_summary">定型文やスニペットを管理します</string>
+    <string name="setting_management_user_template_summary">読みで呼び出す定型文を管理します</string>
     <string name="setting_management_custom_keyboard_summary">カスタムキーボード配列を管理します</string>
     <string name="setting_search_title">設定を検索</string>
     <string name="setting_search_hint">設定名・説明・key で検索</string>
@@ -1607,6 +1608,26 @@
     <string name="shortcut_toolbar_summary_date_picker">今日の日付を挿入します</string>
     <string name="shortcut_toolbar_summary_voice_input">音声入力を開始します</string>
     <string name="shortcut_toolbar_summary_clip_board">クリップボード履歴を表示します</string>
+    <string name="shortcut_toolbar_summary_snippet">スニペットをワンタップで入力します</string>
+    <!-- スニペット（メールアドレスなど、ワンタップで入力するテキスト） -->
+    <string name="snippet_title">スニペット</string>
+    <string name="setting_management_snippet_summary">メールアドレスなど、ワンタップで入力するテキストを管理します</string>
+    <string name="snippet_label_hint">ラベル（任意）</string>
+    <string name="snippet_text_hint">入力するテキスト</string>
+    <string name="snippet_add">スニペットを追加</string>
+    <string name="snippet_edit">スニペットを編集</string>
+    <string name="snippet_registered_list">登録済みのスニペット</string>
+    <string name="snippet_explanation">スニペットは、メールアドレスや挨拶文など、よく使うテキストをワンタップで入力する機能です。候補欄右端の「スニペット」ボタン、または絵文字パネルの「スニペット」タブから呼び出せます。画面を開いた状態では、中央の履歴一覧の先頭にも表示されます。右端のハンドルをドラッグすると並び替えできます。</string>
+    <string name="snippet_empty_text_error">入力するテキストを入力してください</string>
+    <string name="snippet_delete_confirm">「%1$s」を削除しますか？</string>
+    <string name="snippet_delete_all_confirm">すべてのスニペットを削除しますか？定型文やマクロには影響しません。</string>
+    <string name="snippet_saved">スニペットを保存しました</string>
+    <string name="snippet_deleted">スニペットを削除しました</string>
+    <string name="snippet_operation_failed">スニペットの操作に失敗しました: %1$s</string>
+    <string name="snippet_import_success">%1$d件のスニペットを読み込みました</string>
+    <string name="snippet_export_success">スニペットを書き出しました</string>
+    <string name="snippet_nothing_to_export">書き出すスニペットがありません</string>
+    <string name="snippet_reorder_handle">ドラッグして並び替え</string>
     <string name="conversion_beam_width_category_title">変換探索</string>
     <string name="conversion_beam_width_preference_title">変換探索幅</string>
     <string name="conversion_beam_width_preference_summary">かな漢字変換の探索中に保持するラティスノード数を設定します。デフォルトは20です。</string>

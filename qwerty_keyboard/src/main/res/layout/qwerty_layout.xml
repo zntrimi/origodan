@@ -973,6 +973,7 @@
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
+        android:paddingHorizontal="2dp"
         android:text="@string/return_english"
         android:textAllCaps="false"
         android:textColor="@color/keyboard_icon_color"

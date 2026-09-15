@@ -107,6 +107,11 @@ enum class ShortcutType(
         "clip_board",
         com.kazumaproject.core.R.drawable.clip_board,
         description = "クリップボード"
+    ),
+    SNIPPET(
+        "snippet",
+        com.kazumaproject.core.R.drawable.text_snippet_24px,
+        description = "スニペット"
     )
     ;
 

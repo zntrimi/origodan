@@ -35,16 +35,34 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/content_paste_24px" />
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/split_clipboard_text"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:textColor="@color/keyboard_icon_color"
-                android:textSize="13sp" />
+                android:orientation="vertical">
+
+                <!-- スニペットのラベル。クリップボード履歴では非表示 -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/split_clipboard_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/split_clipboard_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/keyboard_icon_color"
+                    android:textSize="13sp" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

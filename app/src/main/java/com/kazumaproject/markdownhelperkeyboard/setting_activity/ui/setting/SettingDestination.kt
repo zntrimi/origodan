@@ -111,6 +111,7 @@ object SettingDestinations {
         "setting_management_user_dictionary",
         "setting_management_user_template",
         "setting_management_text_macro",
+        "setting_management_snippet",
         "setting_management_custom_keyboard",
         "user_dictionary_preference",
         "user_template_preference",
@@ -673,7 +674,7 @@ object SettingDestinations {
             title = context.getString(R.string.user_template_fragment_title),
             summary = context.getString(R.string.setting_management_user_template_summary),
             category = SettingCategory.MANAGEMENT,
-            keywords = listOf("template", "snippet"),
+            keywords = listOf("template", "reading"),
             destinationId = R.id.userTemplateFragment,
             iconRes = CoreR.drawable.book_3_24px,
             destinationType = SettingDestinationType.ManagementDestination(
@@ -685,11 +686,23 @@ object SettingDestinations {
             title = context.getString(R.string.text_macro_title),
             summary = context.getString(R.string.text_macro_management_summary),
             category = SettingCategory.MANAGEMENT,
-            keywords = listOf("macro", "dynamic", "template", "snippet"),
+            keywords = listOf("macro", "dynamic", "template"),
             destinationId = R.id.textMacroFragment,
             iconRes = CoreR.drawable.book_3_24px,
             destinationType = SettingDestinationType.ManagementDestination(
                 destinationId = R.id.textMacroFragment,
+            ),
+        ),
+        destination(
+            key = "setting_management_snippet",
+            title = context.getString(R.string.snippet_title),
+            summary = context.getString(R.string.setting_management_snippet_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("snippet", "email", "address", "one tap", "メール", "定型"),
+            destinationId = R.id.snippetFragment,
+            iconRes = CoreR.drawable.text_snippet_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.snippetFragment,
             ),
         ),
         destination(
@@ -766,6 +779,7 @@ object SettingDestinations {
             "setting_management_user_dictionary" -> R.id.navigation_user_dictionary
             "setting_management_user_template" -> R.id.userTemplateFragment
             "setting_management_text_macro" -> R.id.textMacroFragment
+            "setting_management_snippet" -> R.id.snippetFragment
             "setting_management_custom_keyboard" -> R.id.keyboardListFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment

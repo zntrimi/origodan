@@ -42,6 +42,8 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.snippet.database.Snippet
+import com.kazumaproject.markdownhelperkeyboard.snippet.database.SnippetDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
@@ -86,8 +88,9 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
         LearnedNextWordEntity::class,
+        Snippet::class,
     ],
-    version = 48,
+    version = 49,
     exportSchema = false
 )
 @TypeConverters(
@@ -118,6 +121,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun customZeroQueryDao(): CustomZeroQueryDao
     abstract fun textMacroDao(): TextMacroDao
     abstract fun learnedNextWordDao(): LearnedNextWordDao
+    abstract fun snippetDao(): SnippetDao
 
     companion object {
 
@@ -1233,6 +1237,25 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_learned_next_words_previousText_nextText` ON `learned_next_words` (`previousText`, `nextText`)"
+                )
+            }
+        }
+
+        /** Adds one-tap snippets. Independent of user_template / text_macro rows. */
+        val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `snippet` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `label` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_snippet_sortOrder` ON `snippet` (`sortOrder`)"
                 )
             }
         }

@@ -318,6 +318,11 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroFragment"
         android:label="@string/text_macro_title" />
     <fragment
+        android:id="@+id/snippetFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.snippet.ui.SnippetFragment"
+        android:label="@string/snippet_title"
+        tools:layout="@layout/fragment_snippet" />
+    <fragment
         android:id="@+id/textMacroEditorFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.text_macro.ui.TextMacroEditorFragment"
         android:label="@string/text_macro_editor_title"

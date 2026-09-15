@@ -117,6 +117,7 @@ import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.snippet.SnippetItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -250,6 +251,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.InlineSugge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutPanelAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SplitClipboardHistoryAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SplitUtilityItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.autofill.InlineAutofillController
@@ -352,6 +354,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.PhysicalKeyboardShort
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.SnippetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.TextMacroRepository
 import com.kazumaproject.markdownhelperkeyboard.text_macro.TextMacroCompiler
@@ -593,6 +596,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var textMacroRepository: TextMacroRepository
+
+    @Inject
+    lateinit var snippetRepository: SnippetRepository
 
     @Inject
     lateinit var candidateOrderOverrideRepository: CandidateOrderOverrideRepository
@@ -1602,6 +1608,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedSymbols: List<Symbol>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
     private var currentClipboardItems: List<ClipboardItem> = emptyList()
+    private var currentSnippetItems: List<SnippetItem> = emptyList()
     private var sumireSpecialKeyActionOverrides: List<SumireSpecialKeyActionOverrideEntity> =
         emptyList()
     private var sumireSpecialKeyPlacementOverrides: List<SumireSpecialKeyPlacementOverrideEntity> =
@@ -14923,6 +14930,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshEditHistoryUi()
     }
 
+    /** スニペットをカーソル位置に確定入力する。クリップボード貼り付けと同じ後処理を行う。 */
+    private fun insertSnippet(item: SnippetItem) {
+        if (item.text.isEmpty()) return
+        vibrate()
+        clearZeroQueryAllState(refresh = false)
+        finishComposingText()
+        _inputString.update { "" }
+        stringInTail.set("")
+        commitText(item.text, 1)
+        clearDeletedBufferWithoutResetLayout()
+        refreshEditHistoryUi()
+    }
+
     private fun handleClipboardHistoryItemAction(item: ClipboardItem, action: ClipboardItemAction) {
         vibrate()
         when (action) {
@@ -16779,7 +16799,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setSymbolsFloating(floatingKeyboardLayoutBinding)
+                        setSymbolsFloating(
+                            floatingKeyboardLayoutBinding,
+                            requestedMode = isSymbolKeyboardShow.mode.takeIf {
+                                it == SymbolMode.CLIPBOARD || it == SymbolMode.SNIPPET
+                            },
+                        )
                         if (isSymbolKeyboardShow.isShown) {
                             hideKeyboardViews(getFloatingKeyboardSurface() ?: return@let)
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
@@ -16814,10 +16839,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         animateViewVisibility(keyboardSymbolView, true, withAnimation = false)
                         suggestionRecyclerView.isVisible = false
-                        if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) {
-                            setSymbolsClipboard(mainView = mainView)
-                        } else {
-                            setSymbols(mainView)
+                        when (isSymbolKeyboardShow.mode) {
+                            SymbolMode.CLIPBOARD, SymbolMode.SNIPPET ->
+                                setSymbolsWithMode(mainView, isSymbolKeyboardShow.mode)
+
+                            else -> setSymbols(mainView)
                         }
                     } else {
                         if (isGojuonSurface()) {
@@ -16979,6 +17005,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // 3. CustomSymbolKeyboardViewの表示を更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
                 floatingKeyboardBinding?.floatingSymbolKeyboard?.updateClipboardItems(uiItems)
+                updateSplitClipboardHistory(mainView)
+            }
+        }
+
+        launch {
+            snippetRepository.observeItems().collectLatest { items ->
+                currentSnippetItems = items
+                mainView.keyboardSymbolView.updateSnippetItems(items)
+                floatingKeyboardBinding?.floatingSymbolKeyboard?.updateSnippetItems(items)
                 updateSplitClipboardHistory(mainView)
             }
         }
@@ -21533,6 +21568,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 finishComposingText()
                 setComposingText("", 0)
             }
+
+            ShortcutType.SNIPPET -> {
+                vibrate()
+                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                    isShown = true,
+                    mode = SymbolMode.SNIPPET
+                )
+                stringInTail.set("")
+                finishComposingText()
+                setComposingText("", 0)
+            }
         }
     }
 
@@ -21823,9 +21869,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter = splitClipboardHistoryAdapter
             itemAnimator = null
         }
-        splitClipboardHistoryAdapter?.onItemClick = { item ->
-            vibrate()
-            pasteClipboardHistoryItem(item)
+        splitClipboardHistoryAdapter?.onItemClick = { entry ->
+            when (entry) {
+                is SplitUtilityItem.Snippet -> insertSnippet(entry.item)
+                is SplitUtilityItem.Clipboard -> {
+                    vibrate()
+                    pasteClipboardHistoryItem(entry.item)
+                }
+            }
         }
 
         mainView.shortcutPanelRecyclerview.apply {
@@ -21847,8 +21898,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.compactClipboardHistoryButton.setOnClickListener {
             handleShortcutAction(ShortcutType.CLIP_BOARD, mainView)
         }
+        mainView.compactSnippetButton.setOnClickListener {
+            handleShortcutAction(ShortcutType.SNIPPET, mainView)
+        }
+        mainView.compactSelectAllButton.setOnClickListener {
+            vibrate()
+            handleShortcutAction(ShortcutType.SELECT_ALL, mainView)
+        }
         listOf(
             mainView.compactVoiceButton,
+            mainView.compactSnippetButton,
+            mainView.compactSelectAllButton,
             mainView.compactClipboardHistoryButton,
         ).forEach { button ->
             button.stateListAnimator = null
@@ -21865,7 +21925,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateCompactUtilityButtons(mainView: MainLayoutBinding) {
         updateCompactVoiceButton(mainView)
+        updateCompactSnippetButton(mainView)
+        updateCompactSelectAllButton(mainView)
         updateCompactClipboardHistoryButton(mainView)
+    }
+
+    /** 候補欄が空いているとき（＝マイクと同じ条件）に出す常時ユーティリティボタンの表示条件。 */
+    private fun isCompactUtilityButtonRowAvailable(): Boolean =
+        inputString.value.isEmpty() &&
+            !keyboardSymbolViewState.value.isShown &&
+            !shortcutPanelShown &&
+            !emojiSearchActive
+
+    /** 0 件でもパネル側で登録方法を案内するので隠さない。 */
+    private fun updateCompactSnippetButton(mainView: MainLayoutBinding) {
+        mainView.compactSnippetButton.isVisible = isCompactUtilityButtonRowAvailable()
+    }
+
+    private fun updateCompactSelectAllButton(mainView: MainLayoutBinding) {
+        mainView.compactSelectAllButton.isVisible = isCompactUtilityButtonRowAvailable()
     }
 
     private fun updateCompactClipboardHistoryButton(mainView: MainLayoutBinding) {
@@ -21929,15 +22007,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateSplitClipboardHistory(mainView: MainLayoutBinding) {
         updateCompactClipboardHistoryButton(mainView)
-        val visible = isMirrorGodanSurfaceActive(mainView) && currentClipboardItems.isNotEmpty()
+        // スニペットを先頭に固定し、その下にクリップボード履歴を並べる。
+        val items = currentSnippetItems.map { SplitUtilityItem.Snippet(it) } +
+            currentClipboardItems.map { SplitUtilityItem.Clipboard(it) }
+        val visible = isMirrorGodanSurfaceActive(mainView) && items.isNotEmpty()
         val adapter = splitClipboardHistoryAdapter
         if ((visible && !mainView.splitClipboardHistory.isVisible) ||
-            adapter?.currentList != currentClipboardItems
+            adapter?.currentList != items
         ) splitClipboardHistoryNeedsScrollReset = true
         mainView.splitClipboardHistory.isVisible = visible
         // ListAdapter restores/anchors its scroll position when its diff is applied.
         // Reset afterwards, only on reopening or a changed list, never on each key.
-        adapter?.submitList(currentClipboardItems) {
+        adapter?.submitList(items) {
             if (splitClipboardHistoryNeedsScrollReset && mainView.splitClipboardHistory.isVisible) {
                 mainView.splitClipboardHistory.stopScroll()
                 (mainView.splitClipboardHistory.layoutManager as? LinearLayoutManager)
@@ -22308,6 +22389,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnClipboardItemLongClickListener { item, action ->
                 handleClipboardHistoryItemAction(item, action)
             }
+            setOnSnippetItemClickListener { item -> insertSnippet(item) }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
             setDefaultEmojiSkinTone(defaultEmojiSkinTonePreference)
@@ -22384,6 +22466,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnClipboardItemLongClickListener { item, action ->
                 handleClipboardHistoryItemAction(item, action)
             }
+            setOnSnippetItemClickListener { item -> insertSnippet(item) }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
             setDefaultEmojiSkinTone(defaultEmojiSkinTonePreference)
@@ -23117,12 +23200,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
             symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference,
+            snippets = currentSnippetItems,
         )
     }
 
-    private suspend fun setSymbolsClipboard(mainView: MainLayoutBinding) {
+    /** クリップボード / スニペットなど、指定タブを開いた状態でシンボルパネルを表示する。 */
+    private suspend fun setSymbolsWithMode(mainView: MainLayoutBinding, mode: SymbolMode) {
         val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
@@ -23147,13 +23231,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = SymbolMode.CLIPBOARD,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
+            symbolMode = mode,
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference,
+            snippets = currentSnippetItems,
         )
     }
 
-    private suspend fun setSymbolsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+    /** @param requestedMode ショートカットから直接開くタブ。null なら設定の初期タブを使う。 */
+    private suspend fun setSymbolsFloating(
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
+        requestedMode: SymbolMode? = null,
+    ) {
         val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
@@ -23177,9 +23265,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
+            symbolMode = requestedMode ?: symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference,
+            snippets = currentSnippetItems,
         )
     }
 

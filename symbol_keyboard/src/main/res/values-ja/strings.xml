@@ -5,9 +5,11 @@
     <string name="symbol_mode_emoticon">顔文字</string>
     <string name="symbol_mode_symbol">記号</string>
     <string name="symbol_mode_clipboard">履歴</string>
+    <string name="symbol_mode_snippet">スニペット</string>
     <string name="symbol_return_keyboard">キーボードに戻る</string>
     <string name="symbol_delete">削除</string>
     <string name="symbol_history">最近使ったもの</string>
     <string name="symbol_empty_history">まだ履歴がありません</string>
     <string name="symbol_empty_clipboard">コピーした内容がここに表示されます</string>
+    <string name="symbol_empty_snippet">メールアドレスなど、よく使うテキストを「設定 › スニペット」で登録できます</string>
 </resources>
